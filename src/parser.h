@@ -3,12 +3,12 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     wasmu_Count typesCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < typesCount; i++) {
-        WASMU_DEBUG_LOG("Read value type at %08x", module->position);
+        WASMU_DEBUG_LOG("Read signature type at %08x", module->position);
 
         switch (WASMU_NEXT()) {
-            case WASMU_VALUE_TYPE_FUNCTION:
+            case WASMU_SIGNATURE_TYPE_FUNCTION:
             {
-                WASMU_DEBUG_LOG("Value type: function");
+                WASMU_DEBUG_LOG("Signature type: function");
 
                 wasmu_FunctionType functionType;
 
@@ -36,13 +36,13 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
             }
 
             default:
-                WASMU_DEBUG_LOG("Value type not implemented");
+                WASMU_DEBUG_LOG("Signature type not implemented");
 
                 module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }
 
-        WASMU_DEBUG_LOG("End of value type");
+        WASMU_DEBUG_LOG("End of signature type");
     }
 
     return WASMU_TRUE;

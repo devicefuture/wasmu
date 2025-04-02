@@ -5,9 +5,9 @@ typedef enum {
 } wasmu_ErrorState;
 
 typedef enum {
-    WASMU_DATA_TYPE_I32 = 0x7F,
-    WASMU_DATA_TYPE_F32 = 0x7D
-} wasmu_DataType;
+    WASMU_VALUE_TYPE_I32 = 0x7F,
+    WASMU_VALUE_TYPE_F32 = 0x7D
+} wasmu_ValueType;
 
 typedef enum {
     WASMU_SECTION_CUSTOM = 0,
@@ -25,9 +25,9 @@ typedef enum {
     WASMU_SETCION_DATA_COUNT = 12
 } wasmu_SectionType;
 
-typedef enum wasmu_ValueType {
-    WASMU_VALUE_TYPE_FUNCTION = 0x60
-} wasmu_ValueType;
+typedef enum wasmu_SignatureType {
+    WASMU_SIGNATURE_TYPE_FUNCTION = 0x60
+} wasmu_SignatureType;
 
 typedef struct wasmu_Context {
     wasmu_ErrorState errorState;
@@ -45,9 +45,9 @@ typedef struct wasmu_Module {
 } wasmu_Module;
 
 typedef struct wasmu_FunctionType {
-    wasmu_DataType* parameters;
+    wasmu_ValueType* parameters;
     wasmu_Count parametersCount;
-    wasmu_DataType* results;
+    wasmu_ValueType* results;
     wasmu_Count resultsCount;
 } wasmu_FunctionType;
 
