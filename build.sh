@@ -38,7 +38,15 @@ for testPath in test/*/; do
 
     mkdir -p test/$test/build
 
-    $CC -Idist/ test/$test/$test.c -o test/$test/build/$test
+    $CC -Idist/ test/$test/$test.c -DTEST_NAME=\"$test\" -o test/$test/build/$test
+
+    if [ -f test/$test/script.sh ]; then
+        chmod +x test/$test/script.sh
+
+        pushd test/$test
+            ./script.sh
+        popd
+    fi
 done
 
 if [ "$1" == "--test" ]; then
