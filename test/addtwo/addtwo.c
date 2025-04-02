@@ -8,7 +8,11 @@ TEST {
     char* code;
     unsigned int size = LOAD("build/addtwo.wasm", &code);
 
-    printf("Code size: %d\n", size);
+    wasmu_load(context, code, size);
+
+    ASSERT(context->codeSize == size, "Code not loaded");
+
+    ASSERT(wasmu_parseSections(context), "Parsing failed");
 
     PASS();
 }
