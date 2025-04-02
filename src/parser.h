@@ -3,9 +3,13 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Context* context) {
     wasmu_Count typesCount = wasmu_readUInt(context);
 
     for (wasmu_Count i = 0; i < typesCount; i++) {
+        WASMU_DEBUG_LOG("Read value type at %08x", context->position);
+
         switch (WASMU_NEXT()) {
             case WASMU_VALUE_TYPE_FUNCTION:
             {
+                WASMU_DEBUG_LOG("Value type: function");
+
                 wasmu_FunctionType functionType;
 
                 WASMU_INIT_ENTRIES(functionType.parameters, functionType.parametersCount);
@@ -26,13 +30,20 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Context* context) {
 
                 WASMU_ADD_ENTRY(context->functionTypes, context->functionTypesCount, functionType);
 
+                WASMU_DEBUG_LOG("Parameters count: %d", functionType.parametersCount);
+                WASMU_DEBUG_LOG("Results count: %d", functionType.resultsCount);
+
                 break;
             }
 
             default:
+                WASMU_DEBUG_LOG("Value type not implemented");
+
                 context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }
+
+        WASMU_DEBUG_LOG("End of value type");
     }
 
     return WASMU_TRUE;
@@ -47,17 +58,26 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Context* context) {
 }
 
 wasmu_Bool wasmu_parseSections(wasmu_Context* context) {
+    WASMU_DEBUG_LOG("Parse sections");
+
     static wasmu_U8 magic[] = {0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00};
 
     for (wasmu_Count i = 0; i < sizeof(magic); i++) {
         if (WASMU_NEXT() != magic[i]) {
+            WASMU_DEBUG_LOG("Invalid magic at %08x", context->position - 1);
+
             return WASMU_FALSE;
         }
     }
 
+    WASMU_DEBUG_LOG("Magic matched");
+
     while (WASMU_AVAILABLE()) {
+        WASMU_DEBUG_LOG("Read section at %08x", context->position);
+
         switch (WASMU_NEXT()) {
             case WASMU_SECTION_TYPE:
+                WASMU_DEBUG_LOG("Section: type");
                 if (!wasmu_parseTypesSection(context)) {return WASMU_FALSE;}
                 break;
 
@@ -67,6 +87,8 @@ wasmu_Bool wasmu_parseSections(wasmu_Context* context) {
             case WASMU_SECTION_CODE:
             case WASMU_SECTION_CUSTOM:
             {
+                WASMU_DEBUG_LOG("Section: to implement");
+
                 wasmu_Count size = wasmu_readUInt(context);
 
                 for (wasmu_Count i = 0; i < size; i++) {
@@ -77,9 +99,13 @@ wasmu_Bool wasmu_parseSections(wasmu_Context* context) {
             }
 
             default:
+                WASMU_DEBUG_LOG("Section type not implemented");
+
                 context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }
+
+        WASMU_DEBUG_LOG("End of section");
     }
 
     return WASMU_TRUE;

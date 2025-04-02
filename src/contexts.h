@@ -1,4 +1,6 @@
 wasmu_Context* wasmu_newContext() {
+    WASMU_DEBUG_LOG("Create new context");
+
     wasmu_Context* context = WASMU_NEW(wasmu_Context);
 
     context->errorState = WASMU_ERROR_STATE_NONE;
@@ -12,6 +14,8 @@ wasmu_Context* wasmu_newContext() {
 }
 
 void wasmu_load(wasmu_Context* context, wasmu_U8* code, wasmu_Count codeSize) {
+    WASMU_DEBUG_LOG("Load code - size: %d", codeSize);
+
     context->code = code;
     context->codeSize = codeSize;
     context->position = 0;

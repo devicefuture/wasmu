@@ -23,22 +23,18 @@
 
 #include <stdlib.h>
 
-void* _wasmu_malloc(WASMU_COUNT size) {
-    return malloc(size);
-}
+#define WASMU_MALLOC malloc
+#define WASMU_REALLOC realloc
+#define WASMU_FREE free
 
-void* _wasmu_realloc(void* ptr, WASMU_COUNT size) {
-    return realloc(ptr, size);
-}
+#define WASMU_PRINTF printf
 
-void _wasmu_free(void* ptr) {
-    free(ptr);
-}
+#endif
 
-#define WASMU_MALLOC _wasmu_malloc
-#define WASMU_REALLOC _wasmu_realloc
-#define WASMU_FREE _wasmu_free
-
+#ifdef WASMU_DEBUG
+    #define WASMU_DEBUG_LOG(format, ...) WASMU_PRINTF(format "\n", ##__VA_ARGS__)
+#else
+    #define WASMU_DEBUG_LOG(...)
 #endif
 
 #endif
