@@ -40,16 +40,22 @@ typedef struct wasmu_Module {
     wasmu_U8* code;
     wasmu_Count codeSize;
     wasmu_Count position;
-    struct wasmu_FunctionType* functionTypes;
-    wasmu_Count functionTypesCount;
+    struct wasmu_FunctionSignature* functionSignatures;
+    wasmu_Count functionSignaturesCount;
+    struct wasmu_Function* functions;
+    wasmu_Count functionsCount;
 } wasmu_Module;
 
-typedef struct wasmu_FunctionType {
+typedef struct wasmu_FunctionSignature {
     wasmu_ValueType* parameters;
     wasmu_Count parametersCount;
     wasmu_ValueType* results;
     wasmu_Count resultsCount;
-} wasmu_FunctionType;
+} wasmu_FunctionSignature;
+
+typedef struct wasmu_Function {
+    wasmu_Count signatureIndex;
+} wasmu_Function;
 
 wasmu_Context* wasmu_newContext();
 
