@@ -23,10 +23,11 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Context* context) {
 
                 wasmu_Count resultsCount = wasmu_readUInt(context);
                 
-
                 for (wasmu_Count j = 0; j < resultsCount; j++) {
                     WASMU_ADD_ENTRY(functionType.results, functionType.resultsCount, WASMU_NEXT());
                 }
+
+                // TODO: Restructure `context` struct as function types should really be in a `module` struct
 
                 WASMU_ADD_ENTRY(context->functionTypes, context->functionTypesCount, functionType);
 
