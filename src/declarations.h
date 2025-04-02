@@ -29,6 +29,21 @@ typedef enum wasmu_ValueType {
     WASMU_VALUE_TYPE_FUNCTION = 0x60
 } wasmu_ValueType;
 
+typedef struct wasmu_Context {
+    wasmu_ErrorState errorState;
+    struct wasmu_Module** modules;
+    wasmu_Count modulesCount;
+} wasmu_Context;
+
+typedef struct wasmu_Module {
+    wasmu_Context* context;
+    wasmu_U8* code;
+    wasmu_Count codeSize;
+    wasmu_Count position;
+    struct wasmu_FunctionType* functionTypes;
+    wasmu_Count functionTypesCount;
+} wasmu_Module;
+
 typedef struct wasmu_FunctionType {
     wasmu_DataType* parameters;
     wasmu_Count parametersCount;
@@ -36,20 +51,13 @@ typedef struct wasmu_FunctionType {
     wasmu_Count resultsCount;
 } wasmu_FunctionType;
 
-typedef struct wasmu_Context {
-    wasmu_ErrorState errorState;
-    wasmu_U8* code;
-    wasmu_Count codeSize;
-    wasmu_Count position;
-    wasmu_FunctionType* functionTypes;
-    wasmu_Count functionTypesCount;
-} wasmu_Context;
-
 wasmu_Context* wasmu_newContext();
-void wasmu_load(wasmu_Context* context, wasmu_U8* code, wasmu_Count codeSize);
-wasmu_U8 wasmu_read(wasmu_Context* context, wasmu_Count position);
-wasmu_U8 wasmu_readNext(wasmu_Context* context);
-wasmu_UInt wasmu_readUInt(wasmu_Context* context);
-wasmu_Int wasmu_readInt(wasmu_Context* context);
 
-wasmu_Bool wasmu_parseSections(wasmu_Context* context);
+wasmu_Module* wasmu_newModule(wasmu_Context* context);
+void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize);
+wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
+wasmu_U8 wasmu_readNext(wasmu_Module* module);
+wasmu_UInt wasmu_readUInt(wasmu_Module* module);
+wasmu_Int wasmu_readInt(wasmu_Module* module);
+
+wasmu_Bool wasmu_parseSections(wasmu_Module* module);

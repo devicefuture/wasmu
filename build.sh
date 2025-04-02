@@ -28,6 +28,7 @@ include src/config.h
 include src/common.h
 include src/declarations.h
 include src/contexts.h
+include src/modules.h
 include src/parser.h
 
 tee -a dist/wasmu.h > /dev/null << EOF

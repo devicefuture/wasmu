@@ -18,9 +18,9 @@ typedef WASMU_F32 wasmu_Float;
 
 #define WASMU_NEW(type) (type*)WASMU_MALLOC(sizeof(type))
 
-#define WASMU_READ(position) wasmu_read(context, position)
-#define WASMU_NEXT() wasmu_readNext(context)
-#define WASMU_AVAILABLE() (context->position < context->codeSize)
+#define WASMU_READ(position) wasmu_read(module, position)
+#define WASMU_NEXT() wasmu_readNext(module)
+#define WASMU_AVAILABLE() (module->position < module->codeSize)
 
 #define WASMU_INIT_ENTRIES(entriesPtr, countPtr) do { \
         entriesPtr = WASMU_MALLOC(0); \
