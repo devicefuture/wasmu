@@ -3,7 +3,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     wasmu_Count typesCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < typesCount; i++) {
-        WASMU_DEBUG_LOG("Read signature type at %08x", module->position);
+        WASMU_DEBUG_LOG("Read signature type at 0x%08x", module->position);
 
         switch (WASMU_NEXT()) {
             case WASMU_SIGNATURE_TYPE_FUNCTION:
@@ -61,10 +61,42 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
 
         WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
-        WASMU_DEBUG_LOG("Add function - signature: %d", function.signatureIndex);
+        WASMU_DEBUG_LOG(
+            "Add function - signature: %d, position: 0x%08x, size: %d, declarationsCount: %d",
+            function.signatureIndex, function.codePosition, function.codeSize, function.declarationsCount
+        );
     }
 
     return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readInt(module);
+    wasmu_Count exportsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < exportsCount; i++) {
+        wasmu_Export export;
+
+        export.name = wasmu_readString(module, wasmu_readUInt(module));
+        export.type = WASMU_NEXT();
+
+        switch (export.type) {
+            case WASMU_EXPORT_TYPE_FUNCTION:
+                export.data.asFunctionIndex = wasmu_readUInt(module);
+
+                WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", wasmu_getNullTerminatedChars(export.name), export.data.asFunctionIndex);
+
+                break;
+
+            default:
+                WASMU_DEBUG_LOG("Export type not implemented");
+
+                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
+                return WASMU_FALSE;
+        }
+
+        WASMU_ADD_ENTRY(module->exports, module->exportsCount, export);
+    }
 }
 
 wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
@@ -87,7 +119,7 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
         function->codeSize = wasmu_readUInt(module);
         function->codePosition = module->position;
 
-        WASMU_DEBUG_LOG("Add code - position: %08x, size: %d (ends: %08x)", function->codePosition, function->codeSize, function->codePosition + function->codeSize - 1);
+        WASMU_DEBUG_LOG("Add code - position: 0x%08x, size: %d (ends: 0x%08x)", function->codePosition, function->codeSize, function->codePosition + function->codeSize - 1);
 
         module->position += function->codeSize;
     }
@@ -102,7 +134,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
 
     for (wasmu_Count i = 0; i < sizeof(magic); i++) {
         if (WASMU_NEXT() != magic[i]) {
-            WASMU_DEBUG_LOG("Invalid magic at %08x", module->position - 1);
+            WASMU_DEBUG_LOG("Invalid magic at 0x%08x", module->position - 1);
 
             return WASMU_FALSE;
         }
@@ -111,7 +143,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
     WASMU_DEBUG_LOG("Magic matched");
 
     while (WASMU_AVAILABLE()) {
-        WASMU_DEBUG_LOG("Read section at %08x", module->position);
+        WASMU_DEBUG_LOG("Read section at 0x%08x", module->position);
 
         switch (WASMU_NEXT()) {
             case WASMU_SECTION_TYPE:
@@ -124,13 +156,17 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
                 if (!wasmu_parseFunctionSection(module)) {return WASMU_FALSE;}
                 break;
 
+            case WASMU_SECTION_EXPORT:
+                WASMU_DEBUG_LOG("Section: export");
+                if (!wasmu_parseExportSection(module)) {return WASMU_FALSE;}
+                break;
+
             case WASMU_SECTION_CODE:
                 WASMU_DEBUG_LOG("Section: code");
                 if (!wasmu_parseCodeSection(module)) {return WASMU_FALSE;}
                 break;
 
             // TODO: Implement these sections (skipping for now)
-            case WASMU_SECTION_EXPORT:
             case WASMU_SECTION_CUSTOM:
             {
                 WASMU_DEBUG_LOG("Section: to implement");

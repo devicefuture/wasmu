@@ -30,6 +30,15 @@ typedef enum wasmu_SignatureType {
     WASMU_SIGNATURE_TYPE_FUNCTION = 0x60
 } wasmu_SignatureType;
 
+typedef enum wasmu_ExportType {
+    WASMU_EXPORT_TYPE_FUNCTION = 0x00
+} wasmu_ExportType;
+
+typedef struct wasmu_String {
+    wasmu_Count size;
+    wasmu_U8* chars;
+} wasmu_String;
+
 typedef struct wasmu_Context {
     wasmu_ErrorState errorState;
     struct wasmu_Module** modules;
@@ -46,6 +55,8 @@ typedef struct wasmu_Module {
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
     wasmu_Count nextFunctionIndexForCode;
+    struct wasmu_Export* exports;
+    wasmu_Count exportsCount;
 } wasmu_Module;
 
 typedef struct wasmu_FunctionSignature {
@@ -60,8 +71,15 @@ typedef struct wasmu_Function {
     wasmu_Count codePosition;
     wasmu_Count codeSize;
     wasmu_Count declarationsCount;
-
 } wasmu_Function;
+
+typedef struct wasmu_Export {
+    wasmu_String name;
+    wasmu_ExportType type;
+    union {
+        wasmu_Count asFunctionIndex;
+    } data;
+} wasmu_Export;
 
 wasmu_Context* wasmu_newContext();
 
@@ -71,5 +89,7 @@ wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
 wasmu_U8 wasmu_readNext(wasmu_Module* module);
 wasmu_UInt wasmu_readUInt(wasmu_Module* module);
 wasmu_Int wasmu_readInt(wasmu_Module* module);
+wasmu_String wasmu_readString(wasmu_Module* module, wasmu_Count size);
+wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);

@@ -8,6 +8,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
 
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);
+    WASMU_INIT_ENTRIES(module->exports, module->exportsCount);
 
     WASMU_ADD_ENTRY(context->modules, context->modulesCount, module);
 
@@ -66,4 +67,29 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
     }
 
     return result;
+}
+
+wasmu_String wasmu_readString(wasmu_Module* module, wasmu_Count size) {
+    wasmu_U8* chars = WASMU_MALLOC(size);
+
+    for (unsigned int i = 0; i < size; i++) {
+        chars[i] = WASMU_NEXT();
+    }
+
+    return (wasmu_String) {
+        .size = size,
+        .chars = chars
+    };
+}
+
+wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
+    wasmu_U8* chars = WASMU_MALLOC(string.size + 1);
+
+    for (wasmu_Count i = 0; i < string.size; i++) {
+        chars[i] = string.chars[i];
+    }
+
+    chars[string.size] = '\0';
+
+    return chars;
 }
