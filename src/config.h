@@ -21,6 +21,7 @@
 
 #ifdef WASMU_USE_STDLIB
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #define WASMU_MALLOC malloc

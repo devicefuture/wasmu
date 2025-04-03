@@ -50,6 +50,8 @@ typedef struct wasmu_Module {
     wasmu_U8* code;
     wasmu_Count codeSize;
     wasmu_Count position;
+    struct wasmu_CustomSection* customSections;
+    wasmu_Count customSectionsCount;
     struct wasmu_FunctionSignature* functionSignatures;
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
@@ -58,6 +60,12 @@ typedef struct wasmu_Module {
     struct wasmu_Export* exports;
     wasmu_Count exportsCount;
 } wasmu_Module;
+
+typedef struct wasmu_CustomSection {
+    wasmu_String name;
+    wasmu_Count dataPosition;
+    wasmu_Count dataSize;
+} wasmu_CustomSection;
 
 typedef struct wasmu_FunctionSignature {
     wasmu_ValueType* parameters;
@@ -89,7 +97,7 @@ wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
 wasmu_U8 wasmu_readNext(wasmu_Module* module);
 wasmu_UInt wasmu_readUInt(wasmu_Module* module);
 wasmu_Int wasmu_readInt(wasmu_Module* module);
-wasmu_String wasmu_readString(wasmu_Module* module, wasmu_Count size);
+wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);

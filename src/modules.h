@@ -6,6 +6,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     module->position = 0;
     module->nextFunctionIndexForCode = 0;
 
+    WASMU_INIT_ENTRIES(module->customSections, module->customSectionsCount);
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);
     WASMU_INIT_ENTRIES(module->exports, module->exportsCount);
@@ -69,7 +70,8 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
     return result;
 }
 
-wasmu_String wasmu_readString(wasmu_Module* module, wasmu_Count size) {
+wasmu_String wasmu_readString(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
     wasmu_U8* chars = WASMU_MALLOC(size);
 
     for (unsigned int i = 0; i < size; i++) {

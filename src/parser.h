@@ -1,10 +1,37 @@
+wasmu_Bool wasmu_parseCustomSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count positionBeforeName = module->position;
+
+    wasmu_CustomSection customSection;
+
+    customSection.name = wasmu_readString(module);
+
+    customSection.dataPosition = module->position;
+    customSection.dataSize = size - (module->position - positionBeforeName);
+
+    WASMU_ADD_ENTRY(module->customSections, module->customSectionsCount, customSection);
+
+    #ifdef WASMU_DEBUG
+        wasmu_U8* nameChars = wasmu_getNullTerminatedChars(customSection.name);
+
+        WASMU_DEBUG_LOG(
+            "Add custom section - name: \"%s\", dataPosition: 0x%08x, dataSize: %d",
+            nameChars, customSection.dataPosition, customSection.dataSize
+        );
+
+        WASMU_FREE(nameChars);
+    #endif
+
+    module->position += customSection.dataSize;
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count typesCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < typesCount; i++) {
-        WASMU_DEBUG_LOG("Read signature type at 0x%08x", module->position);
-
         switch (WASMU_NEXT()) {
             case WASMU_SIGNATURE_TYPE_FUNCTION:
             {
@@ -40,8 +67,6 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }
-
-        WASMU_DEBUG_LOG("End of signature type");
     }
 
     return WASMU_TRUE;
@@ -77,16 +102,26 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     for (wasmu_Count i = 0; i < exportsCount; i++) {
         wasmu_Export export;
 
-        export.name = wasmu_readString(module, wasmu_readUInt(module));
+        export.name = wasmu_readString(module);
         export.type = WASMU_NEXT();
 
         switch (export.type) {
             case WASMU_EXPORT_TYPE_FUNCTION:
+            {
+                WASMU_DEBUG_LOG("Export type: function");
+
                 export.data.asFunctionIndex = wasmu_readUInt(module);
 
-                WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", wasmu_getNullTerminatedChars(export.name), export.data.asFunctionIndex);
+                #ifdef WASMU_DEBUG
+                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(export.name);
+
+                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, export.data.asFunctionIndex);
+
+                    WASMU_FREE(nameChars);
+                #endif
 
                 break;
+            }
 
             default:
                 WASMU_DEBUG_LOG("Export type not implemented");
@@ -146,6 +181,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
         WASMU_DEBUG_LOG("Read section at 0x%08x", module->position);
 
         switch (WASMU_NEXT()) {
+            case WASMU_SECTION_CUSTOM:
+                WASMU_DEBUG_LOG("Section: custom");
+                if (!wasmu_parseCustomSection(module)) {return WASMU_FALSE;}
+                break;
+
             case WASMU_SECTION_TYPE:
                 WASMU_DEBUG_LOG("Section: type");
                 if (!wasmu_parseTypesSection(module)) {return WASMU_FALSE;}
@@ -165,20 +205,6 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
                 WASMU_DEBUG_LOG("Section: code");
                 if (!wasmu_parseCodeSection(module)) {return WASMU_FALSE;}
                 break;
-
-            // TODO: Implement these sections (skipping for now)
-            case WASMU_SECTION_CUSTOM:
-            {
-                WASMU_DEBUG_LOG("Section: to implement");
-
-                wasmu_Count size = wasmu_readUInt(module);
-
-                for (wasmu_Count i = 0; i < size; i++) {
-                    WASMU_NEXT();
-                }
-
-                break;
-            }
 
             default:
                 WASMU_DEBUG_LOG("Section type not implemented");

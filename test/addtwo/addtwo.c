@@ -1,5 +1,4 @@
 #include "../helper.h"
-#include "../../dist/wasmu.h"
 
 TEST {
     PART("Load code");

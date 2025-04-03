@@ -1,6 +1,8 @@
 #ifndef HELPER_H_
 #define HELPER_H_
 
+#include "../dist/wasmu.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -45,6 +47,35 @@ unsigned int loadFile(char* path, char** data) {
     fclose(fp);
 
     return size;
+}
+
+bool charsEqual(char* a, char* b) {
+    unsigned int i = 0;
+
+    while (true) {
+        if (a[i] == '\0' && b[i] == '\0') {
+            return true;
+        }
+
+        if (a[i] == '\0' || b[i] == '\0') {
+            return false;
+        }
+
+        if (a[i] != b[i]) {
+            return false;
+        }
+
+        i++;
+    }
+}
+
+bool stringsEqual(wasmu_String a, char* b) {
+    char* chars = wasmu_getNullTerminatedChars(a);
+    bool result = charsEqual(chars, b);
+
+    free(chars);
+
+    return result;
 }
 
 #endif
