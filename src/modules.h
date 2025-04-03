@@ -38,6 +38,9 @@ wasmu_U8 wasmu_readNext(wasmu_Module* module) {
     return wasmu_read(module, module->position++);
 }
 
+// Unsigned integers are encoded as LEB128
+// @source reference https://en.wikipedia.org/wiki/LEB128
+// @licence ccbysa4
 wasmu_UInt wasmu_readUInt(wasmu_Module* module) {
     wasmu_UInt result = 0;
     wasmu_UInt shift = 0;
@@ -52,6 +55,9 @@ wasmu_UInt wasmu_readUInt(wasmu_Module* module) {
     return result;
 }
 
+// Signed integers are encoded as LEB128
+// @source reference https://en.wikipedia.org/wiki/LEB128
+// @licence ccbysa4
 wasmu_Int wasmu_readInt(wasmu_Module* module) {
     wasmu_Int result = 0;
     wasmu_UInt shift = 0;
