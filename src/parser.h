@@ -5,7 +5,6 @@ wasmu_Bool wasmu_parseCustomSection(wasmu_Module* module) {
     wasmu_CustomSection customSection;
 
     customSection.name = wasmu_readString(module);
-
     customSection.dataPosition = module->position;
     customSection.dataSize = size - (module->position - positionBeforeName);
 
