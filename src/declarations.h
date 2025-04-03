@@ -39,10 +39,32 @@ typedef struct wasmu_String {
     wasmu_U8* chars;
 } wasmu_String;
 
+typedef struct wasmu_Call {
+    wasmu_Count moduleIndex;
+    wasmu_Count functionIndex;
+    wasmu_Count position;
+} wasmu_Call;
+
+typedef struct wasmu_CallStack {
+    wasmu_Call* calls;
+    wasmu_Count size;
+    wasmu_Count count;
+} wasmu_CallStack;
+
+typedef struct wasmu_ValueStack {
+    wasmu_U8* data;
+    wasmu_Count size;
+    wasmu_Count position;
+} wasmu_ValueStack;
+
 typedef struct wasmu_Context {
     wasmu_ErrorState errorState;
     struct wasmu_Module** modules;
     wasmu_Count modulesCount;
+    wasmu_CallStack callStack;
+    wasmu_ValueStack valueStack;
+    struct wasmu_Module* activeModule;
+    struct wasmu_Function* activeFunction;
 } wasmu_Context;
 
 typedef struct wasmu_Module {
@@ -56,9 +78,9 @@ typedef struct wasmu_Module {
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
-    wasmu_Count nextFunctionIndexForCode;
     struct wasmu_Export* exports;
     wasmu_Count exportsCount;
+    wasmu_Count nextFunctionIndexForCode;
 } wasmu_Module;
 
 typedef struct wasmu_CustomSection {
@@ -90,6 +112,7 @@ typedef struct wasmu_Export {
 } wasmu_Export;
 
 wasmu_Context* wasmu_newContext();
+wasmu_Bool wasmu_isRunning(wasmu_Context* context);
 
 wasmu_Module* wasmu_newModule(wasmu_Context* context);
 void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize);
@@ -99,5 +122,11 @@ wasmu_UInt wasmu_readUInt(wasmu_Module* module);
 wasmu_Int wasmu_readInt(wasmu_Module* module);
 wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
+wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b);
+wasmu_Int wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
+
+wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Count functionIndex);
+wasmu_Bool wasmu_step(wasmu_Context* context);
+wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Count functionIndex);

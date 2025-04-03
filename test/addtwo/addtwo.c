@@ -13,7 +13,20 @@ TEST {
 
     ASSERT(module->codeSize == size, "Code not loaded");
 
+    PART("Parse sections");
+
     ASSERT(wasmu_parseSections(module), "Parsing failed");
+
+
+    PART("Get exported function");
+
+    wasmu_Int addTwo = wasmu_getExportedFunction(module, "addTwo");
+
+    ASSERT(addTwo != -1, "Function not found");
+
+    PART("Run retrieved function");
+
+    ASSERT(wasmu_runFunction(module, addTwo), "Error encountered while running function");
 
     PASS();
 }

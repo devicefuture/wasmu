@@ -62,7 +62,6 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
 
             default:
                 WASMU_DEBUG_LOG("Signature type not implemented");
-
                 module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }
@@ -124,7 +123,6 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
 
             default:
                 WASMU_DEBUG_LOG("Export type not implemented");
-
                 module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }
@@ -151,11 +149,15 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
         }
 
         function->codeSize = wasmu_readUInt(module);
+
+        wasmu_Count positionBeforeDeclarationsCount = module->position;
+
+        function->declarationsCount = wasmu_readUInt(module);
         function->codePosition = module->position;
 
         WASMU_DEBUG_LOG("Add code - position: 0x%08x, size: %d (ends: 0x%08x)", function->codePosition, function->codeSize, function->codePosition + function->codeSize - 1);
 
-        module->position += function->codeSize;
+        module->position = positionBeforeDeclarationsCount + function->codeSize;
     }
 
     return WASMU_TRUE;
@@ -207,7 +209,6 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
 
             default:
                 WASMU_DEBUG_LOG("Section type not implemented");
-
                 module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
                 return WASMU_FALSE;
         }

@@ -33,3 +33,23 @@ typedef WASMU_F32 wasmu_Float;
     } while (0)
 
 #define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : NULL)
+
+wasmu_Bool wasmu_charsEqual(wasmu_U8* a, wasmu_U8* b) {
+    wasmu_Count i = 0;
+
+    while (WASMU_TRUE) {
+        if (a[i] == '\0' && b[i] == '\0') {
+            return WASMU_TRUE;
+        }
+
+        if (a[i] == '\0' || b[i] == '\0') {
+            return WASMU_FALSE;
+        }
+
+        if (a[i] != b[i]) {
+            return WASMU_FALSE;
+        }
+
+        i++;
+    }
+}

@@ -1,6 +1,7 @@
 wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     wasmu_Module* module = WASMU_NEW(wasmu_Module);
 
+    module->context = context;
     module->code = WASMU_NULL;
     module->codeSize = 0;
     module->position = 0;
@@ -100,4 +101,25 @@ wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     chars[string.size] = '\0';
 
     return chars;
+}
+
+wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b) {
+    wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
+    wasmu_Bool result = wasmu_charsEqual(chars, b);
+
+    free(chars);
+
+    return result;
+}
+
+wasmu_Int wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name) {
+    for (wasmu_Count i = 0; i < module->exportsCount; i++) {
+        wasmu_Export export = module->exports[i];
+
+        if (export.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(export.name, name)) {
+            return export.data.asFunctionIndex;
+        }
+    }
+
+    return -1;
 }

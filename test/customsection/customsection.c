@@ -14,8 +14,8 @@ TEST {
     ASSERT(wasmu_parseSections(module), "Parsing failed");
 
     ASSERT(module->customSectionsCount == 2, "Custom section count is not 2");
-    ASSERT(stringsEqual(module->customSections[0].name, "TestA"), "First custom section name is incorrect");
-    ASSERT(stringsEqual(module->customSections[1].name, "TestB"), "Second custom section name is incorrect");
+    ASSERT(wasmu_stringEqualsChars(module->customSections[0].name, "TestA"), "First custom section name is incorrect");
+    ASSERT(wasmu_stringEqualsChars(module->customSections[1].name, "TestB"), "Second custom section name is incorrect");
 
     PASS();
 }
