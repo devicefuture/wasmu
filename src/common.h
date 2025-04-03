@@ -31,3 +31,5 @@ typedef WASMU_F32 wasmu_Float;
         entriesPtr = WASMU_REALLOC(entriesPtr, sizeof((entriesPtr)[0]) * (++(countPtr))); \
         entriesPtr[(countPtr) - 1] = entry; \
     } while (0)
+
+#define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : NULL)

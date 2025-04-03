@@ -4,6 +4,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     module->code = WASMU_NULL;
     module->codeSize = 0;
     module->position = 0;
+    module->nextFunctionIndexForCode = 0;
 
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);

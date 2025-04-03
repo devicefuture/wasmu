@@ -29,8 +29,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
 
                 WASMU_ADD_ENTRY(module->functionSignatures, module->functionSignaturesCount, signature);
 
-                WASMU_DEBUG_LOG("Parameters count: %d", signature.parametersCount);
-                WASMU_DEBUG_LOG("Results count: %d", signature.resultsCount);
+                WASMU_DEBUG_LOG("Add function signature - parametersCount: %d, resultsCount: %d", signature.parametersCount, signature.resultsCount);
 
                 break;
             }
@@ -56,10 +55,41 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
         wasmu_Function function;
 
         function.signatureIndex = wasmu_readUInt(module);
+        function.codePosition = 0;
+        function.codeSize = 0;
+        function.declarationsCount = 0;
 
         WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
         WASMU_DEBUG_LOG("Add function - signature: %d", function.signatureIndex);
+    }
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readInt(module);
+    wasmu_Count bodiesCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < bodiesCount; i++) {
+        wasmu_Count functionIndex = module->nextFunctionIndexForCode++;
+
+        wasmu_Function* function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+
+        if (!function) {
+            WASMU_DEBUG_LOG("No function exists for code body");
+
+            module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
+
+            return WASMU_FALSE;
+        }
+
+        function->codeSize = wasmu_readUInt(module);
+        function->codePosition = module->position;
+
+        WASMU_DEBUG_LOG("Add code - position: %08x, size: %d (ends: %08x)", function->codePosition, function->codeSize, function->codePosition + function->codeSize - 1);
+
+        module->position += function->codeSize;
     }
 
     return WASMU_TRUE;
@@ -94,9 +124,13 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
                 if (!wasmu_parseFunctionSection(module)) {return WASMU_FALSE;}
                 break;
 
+            case WASMU_SECTION_CODE:
+                WASMU_DEBUG_LOG("Section: code");
+                if (!wasmu_parseCodeSection(module)) {return WASMU_FALSE;}
+                break;
+
             // TODO: Implement these sections (skipping for now)
             case WASMU_SECTION_EXPORT:
-            case WASMU_SECTION_CODE:
             case WASMU_SECTION_CUSTOM:
             {
                 WASMU_DEBUG_LOG("Section: to implement");

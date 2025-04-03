@@ -1,7 +1,8 @@
 typedef enum {
     WASMU_ERROR_STATE_NONE = 0,
     WASMU_ERROR_STATE_NOT_IMPLEMENTED,
-    WASMU_ERROR_STATE_MEMORY_OOB
+    WASMU_ERROR_STATE_MEMORY_OOB,
+    WASMU_ERROR_STATE_CODE_BODY_MISMATCH
 } wasmu_ErrorState;
 
 typedef enum {
@@ -44,6 +45,7 @@ typedef struct wasmu_Module {
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
+    wasmu_Count nextFunctionIndexForCode;
 } wasmu_Module;
 
 typedef struct wasmu_FunctionSignature {
@@ -55,6 +57,10 @@ typedef struct wasmu_FunctionSignature {
 
 typedef struct wasmu_Function {
     wasmu_Count signatureIndex;
+    wasmu_Count codePosition;
+    wasmu_Count codeSize;
+    wasmu_Count declarationsCount;
+
 } wasmu_Function;
 
 wasmu_Context* wasmu_newContext();
