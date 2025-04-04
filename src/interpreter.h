@@ -13,6 +13,8 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     if (context->activeModule) {
         context->activeFunction = WASMU_GET_ENTRY(module->functions, module->functionsCount, call.functionIndex);
     }
+
+    context->currentValueStackBase = call.valueStackBase;
 }
 
 void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
@@ -57,9 +59,86 @@ wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Count functionIndex) {
+void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count size) {
+    wasmu_Count newPosition = stack->position + size;
+
+    if (newPosition > stack->size) {
+        stack->size = newPosition;
+        stack->data = WASMU_REALLOC(stack->data, stack->size);
+    }
+}
+
+void wasmu_pushI32(wasmu_Context* context, wasmu_I32 value) {
+    wasmu_ValueStack* stack = &context->valueStack;
+
+    wasmu_growValueStack(stack, 4);
+
+    for (wasmu_Count i = 0; i < 4; i++) {
+        stack->data[stack->position++] = value & 0xFF;
+        value >>= 8;
+    }
+}
+
+wasmu_I32 wasmu_popI32(wasmu_Context* context) {
+    wasmu_I32 value = 0;
+    wasmu_ValueStack* stack = &context->valueStack;
+
+    for (wasmu_Count i = 0; i < 4; i++) {
+        if (stack->position == 0) {
+            WASMU_DEBUG_LOG("Value stack underflow");
+            context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+            return 0;
+        }
+
+        value <<= 8;
+        value |= stack->data[--stack->position];
+    }
+
+    return value;
+}
+
+wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
+    wasmu_Module** modulePtr = WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
+    wasmu_Module* module = *modulePtr;
+
+    if (!module) {
+        return WASMU_FALSE;
+    }
+
+    wasmu_Function* function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+
+    if (!function) {
+        return WASMU_FALSE;
+    }
+
+    module->position = function->codePosition;
+
+    wasmu_Count valueStackBase = context->valueStack.position;
+    wasmu_FunctionSignature* signature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, function->signatureIndex);
+
+    valueStackBase -= signature->parametersStackSize;
+
+    WASMU_DEBUG_LOG("Decrease stack base by %d for %d parameters", signature->parametersStackSize, signature->parametersCount);
+
+    wasmu_pushCall(context, (wasmu_Call) {
+        .moduleIndex = moduleIndex,
+        .functionIndex = functionIndex,
+        .position = function->codePosition,
+        .valueStackBase = valueStackBase
+    });
+
+    WASMU_DEBUG_LOG(
+        "Pushed call - moduleIndex: %d, functionIndex: %d, position: 0x%08x, valueStackBase: %d (size: %d)",
+        moduleIndex, functionIndex, function->codePosition, valueStackBase, function->codeSize
+    );
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     wasmu_Context* context = module->context;
     wasmu_Count moduleIndex = -1;
+    wasmu_Count functionIndex = -1;
 
     for (wasmu_Count i = 0; i < context->modulesCount; i++) {
         if (context->modules[i] == module) {
@@ -72,26 +151,18 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Count functionIndex) {
         return WASMU_FALSE;
     }
 
-    wasmu_Function* function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+    for (wasmu_Count i = 0; i < module->functionsCount; i++) {
+        if (&(module->functions[i]) == function) {
+            functionIndex = i;
+            break;
+        }
+    }
 
-    if (!function) {
+    if (functionIndex == -1) {
         return WASMU_FALSE;
     }
 
-    module->position = function->codePosition;
-
-    wasmu_pushCall(context, (wasmu_Call) {
-        .moduleIndex = moduleIndex,
-        .functionIndex = functionIndex,
-        .position = function->codePosition
-    });
-
-    WASMU_DEBUG_LOG(
-        "Pushed call - moduleIndex: %d, functionIndex: %d, position: 0x%08x (size: %d)",
-        moduleIndex, functionIndex, function->codePosition, function->codeSize
-    );
-
-    return WASMU_TRUE;
+    return wasmu_callFunctionByIndex(context, moduleIndex, functionIndex);
 }
 
 wasmu_Bool wasmu_step(wasmu_Context* context) {
@@ -107,7 +178,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
     wasmu_U8 opcode = WASMU_NEXT();
 
-    WASMU_DEBUG_LOG("Execute opcode: %02x", opcode);
+    WASMU_DEBUG_LOG("Execute opcode: 0x%02x", opcode);
 
     // TODO: Implement actual functionality of these opcodes
 
@@ -147,10 +218,10 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Count functionIndex) {
-    WASMU_DEBUG_LOG("Call function: %d", functionIndex);
+wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
+    WASMU_DEBUG_LOG("Run function");
 
-    wasmu_Bool called = wasmu_callFunction(module, functionIndex);
+    wasmu_Bool called = wasmu_callFunction(module, function);
 
     if (!called) {
         return WASMU_FALSE;

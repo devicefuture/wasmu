@@ -38,13 +38,19 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
 
                 wasmu_FunctionSignature signature;
 
+                signature.parametersStackSize = 0;
+
                 WASMU_INIT_ENTRIES(signature.parameters, signature.parametersCount);
                 WASMU_INIT_ENTRIES(signature.results, signature.resultsCount);
 
                 wasmu_Count parametersCount = wasmu_readUInt(module);
 
                 for (wasmu_Count j = 0; j < parametersCount; j++) {
-                    WASMU_ADD_ENTRY(signature.parameters, signature.parametersCount, WASMU_NEXT());
+                    wasmu_ValueType parameterType = WASMU_NEXT();
+
+                    signature.parametersStackSize += wasmu_getValueTypeStackSize(parameterType);
+
+                    WASMU_ADD_ENTRY(signature.parameters, signature.parametersCount, parameterType);
                 }
 
                 wasmu_Count resultsCount = wasmu_readUInt(module);

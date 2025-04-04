@@ -112,6 +112,18 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b) {
     return result;
 }
 
+wasmu_Count wasmu_getValueTypeStackSize(wasmu_ValueType type) {
+    switch (type) {
+        case WASMU_VALUE_TYPE_I32:
+        case WASMU_VALUE_TYPE_F32:
+            return 4;
+
+        default:
+            WASMU_DEBUG_LOG("Unknown value type: 0x%02x", type);
+            return 0;
+    }
+}
+
 wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name) {
     for (wasmu_Count i = 0; i < module->exportsCount; i++) {
         wasmu_Export export = module->exports[i];

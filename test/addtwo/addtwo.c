@@ -19,9 +19,16 @@ TEST {
 
     PART("Get exported function");
 
-    wasmu_Int addTwo = wasmu_getExportedFunctionIndex(module, "addTwo");
+    wasmu_Function* addTwo = wasmu_getExportedFunction(module, "addTwo");
 
-    ASSERT(addTwo != -1, "Function not found");
+    ASSERT(addTwo, "Function not found");
+
+    PART("Add arguments to value stack");
+
+    wasmu_pushI32(context, 1);
+    wasmu_pushI32(context, 2);
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
 
     PART("Run retrieved function");
 
