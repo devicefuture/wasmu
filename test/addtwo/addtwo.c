@@ -17,10 +17,9 @@ TEST {
 
     ASSERT(wasmu_parseSections(module), "Parsing failed");
 
-
     PART("Get exported function");
 
-    wasmu_Int addTwo = wasmu_getExportedFunction(module, "addTwo");
+    wasmu_Int addTwo = wasmu_getExportedFunctionIndex(module, "addTwo");
 
     ASSERT(addTwo != -1, "Function not found");
 

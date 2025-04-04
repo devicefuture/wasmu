@@ -112,7 +112,7 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b) {
     return result;
 }
 
-wasmu_Int wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name) {
+wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name) {
     for (wasmu_Count i = 0; i < module->exportsCount; i++) {
         wasmu_Export export = module->exports[i];
 
@@ -122,4 +122,14 @@ wasmu_Int wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name) {
     }
 
     return -1;
+}
+
+wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name) {
+    wasmu_Int functionIndex = wasmu_getExportedFunctionIndex(module, name);
+
+    if (functionIndex == -1) {
+        return WASMU_NULL;
+    }
+
+    return WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 }

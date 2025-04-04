@@ -32,7 +32,7 @@ typedef WASMU_F32 wasmu_Float;
         entriesPtr[(countPtr) - 1] = entry; \
     } while (0)
 
-#define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : NULL)
+#define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : WASMU_NULL)
 
 wasmu_Bool wasmu_charsEqual(wasmu_U8* a, wasmu_U8* b) {
     wasmu_Count i = 0;

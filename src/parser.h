@@ -80,13 +80,14 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
         function.signatureIndex = wasmu_readUInt(module);
         function.codePosition = 0;
         function.codeSize = 0;
-        function.declarationsCount = 0;
+
+        WASMU_INIT_ENTRIES(function.locals, function.localsCount);
 
         WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
         WASMU_DEBUG_LOG(
-            "Add function - signature: %d, position: 0x%08x, size: %d, declarationsCount: %d",
-            function.signatureIndex, function.codePosition, function.codeSize, function.declarationsCount
+            "Add function - signature: %d, position: 0x%08x, size: %d, localsCount: %d",
+            function.signatureIndex, function.codePosition, function.codeSize, function.localsCount
         );
     }
 
@@ -150,14 +151,26 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
         function->codeSize = wasmu_readUInt(module);
 
-        wasmu_Count positionBeforeDeclarationsCount = module->position;
+        wasmu_Count positionBeforeLocals = module->position;
 
-        function->declarationsCount = wasmu_readUInt(module);
+        wasmu_Count localDeclarationsCount = wasmu_readUInt(module);
+
+        for (wasmu_Count j = 0; j < localDeclarationsCount; j++) {
+            wasmu_Count typeLocalsCount = wasmu_readUInt(module);
+            wasmu_ValueType type = WASMU_NEXT();
+
+            WASMU_DEBUG_LOG("Add local declaration - type 0x%02x, count %d", type, typeLocalsCount);
+
+            for (wasmu_Count k = 0; k < typeLocalsCount; k++) {
+                WASMU_ADD_ENTRY(function->locals, function->localsCount, type);
+            }
+        }
+
         function->codePosition = module->position;
 
         WASMU_DEBUG_LOG("Add code - position: 0x%08x, size: %d (ends: 0x%08x)", function->codePosition, function->codeSize, function->codePosition + function->codeSize - 1);
 
-        module->position = positionBeforeDeclarationsCount + function->codeSize;
+        module->position = positionBeforeLocals + function->codeSize;
     }
 
     return WASMU_TRUE;

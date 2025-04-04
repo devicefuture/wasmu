@@ -100,7 +100,8 @@ typedef struct wasmu_Function {
     wasmu_Count signatureIndex;
     wasmu_Count codePosition;
     wasmu_Count codeSize;
-    wasmu_Count declarationsCount;
+    wasmu_ValueType* locals;
+    wasmu_Count localsCount;
 } wasmu_Function;
 
 typedef struct wasmu_Export {
@@ -123,7 +124,8 @@ wasmu_Int wasmu_readInt(wasmu_Module* module);
 wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b);
-wasmu_Int wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
+wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name);
+wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
