@@ -134,6 +134,8 @@ wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
+wasmu_I32 wasmu_stackGetI32(wasmu_Context* context, wasmu_Count index);
+void wasmu_stackSetI32(wasmu_Context* context, wasmu_Count index, wasmu_I32 value);
 void wasmu_pushI32(wasmu_Context* context, wasmu_I32 value);
 wasmu_I32 wasmu_popI32(wasmu_Context* context);
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);

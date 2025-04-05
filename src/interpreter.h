@@ -59,40 +59,56 @@ wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
     return WASMU_TRUE;
 }
 
-void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count size) {
-    wasmu_Count newPosition = stack->position + size;
-
+void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
     if (newPosition > stack->size) {
         stack->size = newPosition;
         stack->data = WASMU_REALLOC(stack->data, stack->size);
     }
 }
 
-void wasmu_pushI32(wasmu_Context* context, wasmu_I32 value) {
-    wasmu_ValueStack* stack = &context->valueStack;
-
-    wasmu_growValueStack(stack, 4);
-
-    for (wasmu_Count i = 0; i < 4; i++) {
-        stack->data[stack->position++] = value & 0xFF;
-        value >>= 8;
-    }
-}
-
-wasmu_I32 wasmu_popI32(wasmu_Context* context) {
+wasmu_I32 wasmu_stackGetI32(wasmu_Context* context, wasmu_Count index) {
     wasmu_I32 value = 0;
     wasmu_ValueStack* stack = &context->valueStack;
 
     for (wasmu_Count i = 0; i < 4; i++) {
-        if (stack->position == 0) {
-            WASMU_DEBUG_LOG("Value stack underflow");
-            context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
-            return 0;
-        }
-
         value <<= 8;
-        value |= stack->data[--stack->position];
+        value |= stack->data[index + i];
     }
+
+    return value;
+}
+
+void wasmu_stackSetI32(wasmu_Context* context, wasmu_Count index, wasmu_I32 value) {
+    wasmu_ValueStack* stack = &context->valueStack;
+
+    wasmu_growValueStack(stack, index + 4);
+
+    for (wasmu_Count i = 0; i < 4; i++) {
+        stack->data[index + i] = value & 0xFF;
+        value >>= 8;
+    }
+}
+
+void wasmu_pushI32(wasmu_Context* context, wasmu_I32 value) {
+    wasmu_ValueStack* stack = &context->valueStack;
+
+    wasmu_stackSetI32(context, stack->position, value);
+
+    stack->position += 4;
+}
+
+wasmu_I32 wasmu_popI32(wasmu_Context* context) {
+    wasmu_ValueStack* stack = &context->valueStack;
+
+    if (stack->position < 4) {
+        WASMU_DEBUG_LOG("Value stack underflow");
+        context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+        return 0;
+    }
+
+    wasmu_I32 value = wasmu_stackGetI32(context, stack->position);
+
+    stack->position -= 4;
 
     return value;
 }
