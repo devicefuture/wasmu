@@ -48,7 +48,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 for (wasmu_Count j = 0; j < parametersCount; j++) {
                     wasmu_ValueType parameterType = WASMU_NEXT();
 
-                    signature.parametersStackSize += wasmu_getValueTypeStackSize(parameterType);
+                    signature.parametersStackSize += wasmu_getValueTypeSize(parameterType);
 
                     WASMU_ADD_ENTRY(signature.parameters, signature.parametersCount, parameterType);
                 }

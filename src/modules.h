@@ -112,7 +112,7 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b) {
     return result;
 }
 
-wasmu_Count wasmu_getValueTypeStackSize(wasmu_ValueType type) {
+wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
     switch (type) {
         case WASMU_VALUE_TYPE_I32:
         case WASMU_VALUE_TYPE_F32:

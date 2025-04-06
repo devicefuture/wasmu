@@ -59,6 +59,12 @@ typedef struct wasmu_ValueStack {
     wasmu_Count position;
 } wasmu_ValueStack;
 
+typedef struct wasmu_StackLocal {
+    wasmu_Count position;
+    wasmu_ValueType valueType;
+    wasmu_Count size;
+} wasmu_StackLocal;
+
 typedef struct wasmu_Context {
     wasmu_ErrorState errorState;
     struct wasmu_Module** modules;
@@ -67,7 +73,10 @@ typedef struct wasmu_Context {
     wasmu_ValueStack valueStack;
     struct wasmu_Module* activeModule;
     struct wasmu_Function* activeFunction;
+    struct wasmu_FunctionSignature* activeFunctionSignature;
     wasmu_Count currentValueStackBase;
+    wasmu_StackLocal* currentStackLocals;
+    wasmu_Count currentStackLocalsCount;
 } wasmu_Context;
 
 typedef struct wasmu_Module {
@@ -128,16 +137,16 @@ wasmu_Int wasmu_readInt(wasmu_Module* module);
 wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b);
-wasmu_Count wasmu_getValueTypeStackSize(wasmu_ValueType type);
+wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type);
 wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name);
 wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
-wasmu_I32 wasmu_stackGetI32(wasmu_Context* context, wasmu_Count index);
-void wasmu_stackSetI32(wasmu_Context* context, wasmu_Count index, wasmu_I32 value);
-void wasmu_pushI32(wasmu_Context* context, wasmu_I32 value);
-wasmu_I32 wasmu_popI32(wasmu_Context* context);
+wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes);
+void wasmu_stackSetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes, wasmu_Int value);
+void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value);
+wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes);
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);
 wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function);
 wasmu_Bool wasmu_step(wasmu_Context* context);

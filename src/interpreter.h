@@ -1,8 +1,9 @@
 void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     /*
-        This is done to cache pointers to the active module and function,
-        instead of having to check the top of the call stack and then resolve
-        indexes to pointers every time we want to step our context.
+        This is done to cache pointers to the active module, function and
+        function signature, instead of having to check the top of the call stack
+        and then resolve indexes to pointers every time we want to step our
+        context.
     */
 
     wasmu_Module** moduleEntry = WASMU_GET_ENTRY(context->modules, context->modulesCount, call.moduleIndex);
@@ -12,6 +13,27 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
 
     if (context->activeModule) {
         context->activeFunction = WASMU_GET_ENTRY(module->functions, module->functionsCount, call.functionIndex);
+        context->activeFunctionSignature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, context->activeFunction->signatureIndex);
+
+        context->currentStackLocals = WASMU_REALLOC(context->currentStackLocals, 0);
+        context->currentStackLocalsCount = 0;
+
+        wasmu_Count currentPosition = call.valueStackBase;
+
+        for (wasmu_Count i = 0; i < context->activeFunctionSignature->parametersCount; i++) {
+            wasmu_ValueType type = context->activeFunctionSignature->parameters[i];
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_StackLocal local = {
+                .position = currentPosition,
+                .valueType = type,
+                .size = size
+            };
+
+            WASMU_ADD_ENTRY(context->currentStackLocals, context->currentStackLocalsCount, local);
+
+            currentPosition += size;
+        }
     }
 
     context->currentValueStackBase = call.valueStackBase;
@@ -66,51 +88,48 @@ void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
     }
 }
 
-wasmu_I32 wasmu_stackGetI32(wasmu_Context* context, wasmu_Count index) {
-    wasmu_I32 value = 0;
+wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes) {
+    wasmu_Int value = 0;
     wasmu_ValueStack* stack = &context->valueStack;
 
-    for (wasmu_Count i = 0; i < 4; i++) {
-        value <<= 8;
-        value |= stack->data[index + i];
+    for (wasmu_Count i = 0; i < bytes; i++) {
+        value |= stack->data[position + i] >> (i * 8);
     }
 
     return value;
 }
 
-void wasmu_stackSetI32(wasmu_Context* context, wasmu_Count index, wasmu_I32 value) {
+void wasmu_stackSetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes, wasmu_Int value) {
     wasmu_ValueStack* stack = &context->valueStack;
 
-    wasmu_growValueStack(stack, index + 4);
+    wasmu_growValueStack(stack, position + bytes);
 
-    for (wasmu_Count i = 0; i < 4; i++) {
-        stack->data[index + i] = value & 0xFF;
+    for (wasmu_Count i = 0; i < bytes; i++) {
+        stack->data[position + i] = value & 0xFF;
         value >>= 8;
     }
 }
 
-void wasmu_pushI32(wasmu_Context* context, wasmu_I32 value) {
+void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value) {
     wasmu_ValueStack* stack = &context->valueStack;
 
-    wasmu_stackSetI32(context, stack->position, value);
+    wasmu_stackSetInt(context, stack->position, bytes, value);
 
-    stack->position += 4;
+    stack->position += bytes;
 }
 
-wasmu_I32 wasmu_popI32(wasmu_Context* context) {
+wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     wasmu_ValueStack* stack = &context->valueStack;
 
-    if (stack->position < 4) {
+    if (stack->position < bytes) {
         WASMU_DEBUG_LOG("Value stack underflow");
         context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
         return 0;
     }
 
-    wasmu_I32 value = wasmu_stackGetI32(context, stack->position);
+    stack->position -= bytes;
 
-    stack->position -= 4;
-
-    return value;
+    return wasmu_stackGetInt(context, stack->position, bytes);
 }
 
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
@@ -132,9 +151,17 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
     wasmu_Count valueStackBase = context->valueStack.position;
     wasmu_FunctionSignature* signature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, function->signatureIndex);
 
+    WASMU_DEBUG_LOG("Decrease stack base by %d for %d parameters", signature->parametersStackSize, signature->parametersCount);
+
     valueStackBase -= signature->parametersStackSize;
 
-    WASMU_DEBUG_LOG("Decrease stack base by %d for %d parameters", signature->parametersStackSize, signature->parametersCount);
+    for (wasmu_Count i = 0; i < function->localsCount; i++) {
+        wasmu_Count typeSize = wasmu_getValueTypeSize(function->locals[i]);
+
+        WASMU_DEBUG_LOG("Allocate local on stack - type: 0x%02x (typeSize: %d)", function->locals[i], typeSize);
+
+        wasmu_pushInt(context, typeSize, 0);
+    }
 
     wasmu_pushCall(context, (wasmu_Call) {
         .moduleIndex = moduleIndex,
@@ -196,15 +223,17 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
     WASMU_DEBUG_LOG("Execute opcode: 0x%02x", opcode);
 
-    // TODO: Implement actual functionality of these opcodes
-
     switch (opcode) {
         case WASMU_OP_LOCAL_GET:
         {
-            wasmu_Function* function = context->activeFunction;
             wasmu_Count localIndex = wasmu_readUInt(module);
 
-            WASMU_DEBUG_LOG("Get local: %d", localIndex);
+            wasmu_StackLocal* local = WASMU_GET_ENTRY(context->currentStackLocals, context->currentStackLocalsCount, localIndex);
+            wasmu_Int value = wasmu_stackGetInt(context, local->position, local->size);
+
+            WASMU_DEBUG_LOG("Get local - index: %d (position: 0x%08x, size: %d, value: %d)", localIndex, local->position, local->size, value);
+
+            wasmu_pushInt(context, local->size, value);
 
             break;
         }
@@ -220,7 +249,12 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_ADD:
         {
-            WASMU_DEBUG_LOG("Add I32");
+            wasmu_I32 a = wasmu_popInt(context, 4);
+            wasmu_I32 b = wasmu_popInt(context, 4);
+
+            WASMU_DEBUG_LOG("Add I32 - a: %d, b: %d (result: %d)", a, b, a + b);
+
+            wasmu_pushInt(context, 4, a + b);
 
             break;
         }

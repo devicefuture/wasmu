@@ -25,14 +25,16 @@ TEST {
 
     PART("Add arguments to value stack");
 
-    wasmu_pushI32(context, 1);
-    wasmu_pushI32(context, 2);
+    wasmu_pushInt(context, 4, 1);
+    wasmu_pushInt(context, 4, 2);
 
     ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
 
     PART("Run retrieved function");
 
     ASSERT(wasmu_runFunction(module, addTwo), "Error encountered while running function");
+
+    ASSERT(wasmu_popInt(context, 4) == 3, "Result is not 3");
 
     PASS();
 }
