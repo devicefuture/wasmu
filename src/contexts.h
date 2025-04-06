@@ -7,6 +7,9 @@ wasmu_Context* wasmu_newContext() {
     context->callStack.calls = WASMU_MALLOC(0);
     context->callStack.size = 0;
     context->callStack.count = 0;
+    context->typeStack.types = WASMU_MALLOC(0);
+    context->typeStack.size = 0;
+    context->typeStack.count = 0;
     context->valueStack.data = WASMU_MALLOC(0);
     context->valueStack.size = 0;
     context->valueStack.position = 0;

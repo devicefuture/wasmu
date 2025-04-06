@@ -3,7 +3,8 @@ typedef enum {
     WASMU_ERROR_STATE_NOT_IMPLEMENTED,
     WASMU_ERROR_STATE_MEMORY_OOB,
     WASMU_ERROR_STATE_CODE_BODY_MISMATCH,
-    WASMU_ERROR_STATE_STACK_UNDERFLOW
+    WASMU_ERROR_STATE_STACK_UNDERFLOW,
+    WASMU_ERROR_STATE_TYPE_MISMATCH
 } wasmu_ErrorState;
 
 typedef enum {
@@ -53,6 +54,12 @@ typedef struct wasmu_CallStack {
     wasmu_Count count;
 } wasmu_CallStack;
 
+typedef struct wasmu_TypeStack {
+    wasmu_ValueType* types;
+    wasmu_Count size;
+    wasmu_Count count;
+} wasmu_TypeStack;
+
 typedef struct wasmu_ValueStack {
     wasmu_U8* data;
     wasmu_Count size;
@@ -70,6 +77,7 @@ typedef struct wasmu_Context {
     struct wasmu_Module** modules;
     wasmu_Count modulesCount;
     wasmu_CallStack callStack;
+    wasmu_TypeStack typeStack;
     wasmu_ValueStack valueStack;
     struct wasmu_Module* activeModule;
     struct wasmu_Function* activeFunction;
@@ -143,8 +151,8 @@ wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
-wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes);
-void wasmu_stackSetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes, wasmu_Int value);
+void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
+wasmu_ValueType wasmu_popType(wasmu_Context* context);
 void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value);
 wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes);
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);

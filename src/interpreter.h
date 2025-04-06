@@ -1,3 +1,13 @@
+#define WASMU_ASSERT_POP_TYPE(type) do { \
+    wasmu_ValueType poppedType = wasmu_popType(context); \
+    \
+    if (poppedType != type) { \
+        WASMU_DEBUG_LOG("Expected type 0x%02x but got 0x%02x", type, poppedType); \
+        context->errorState = WASMU_ERROR_STATE_TYPE_MISMATCH; \
+        return WASMU_FALSE; \
+    } \
+} while (0)
+
 void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     /*
         This is done to cache pointers to the active module, function and
@@ -62,23 +72,48 @@ wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
         return WASMU_FALSE;
     }
 
-    stack->count--;
-
-    if (stack->count == 0) {
-        context->activeModule = WASMU_NULL;
-
-        return WASMU_TRUE;
+    if (returnedCall) {
+        *returnedCall = stack->calls[stack->count - 1];
     }
 
-    wasmu_Call call = stack->calls[stack->count - 1];
+    stack->count--;
 
-    wasmu_populateActiveCallInfo(context, call);
-
-    if (returnedCall) {
-        *returnedCall = call;
+    if (stack->count > 0) {
+        wasmu_populateActiveCallInfo(context, stack->calls[stack->count - 1]);
+    } else {
+        context->activeModule = WASMU_NULL;
     }
 
     return WASMU_TRUE;
+}
+
+void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type) {
+    wasmu_TypeStack* stack = &context->typeStack;
+
+    stack->count++;
+
+    if (stack->count > stack->size) {
+        stack->size = stack->count;
+        stack->types = WASMU_REALLOC(stack->types, stack->size * sizeof(wasmu_ValueType));
+    }
+
+    stack->types[stack->count - 1] = type;
+}
+
+wasmu_ValueType wasmu_popType(wasmu_Context* context) {
+    wasmu_TypeStack* stack = &context->typeStack;
+
+    if (stack->count == 0) {
+        WASMU_DEBUG_LOG("Type stack underflow");
+        context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+        return WASMU_VALUE_TYPE_I32;
+    }
+
+    wasmu_ValueType type = stack->types[stack->count - 1];
+
+    stack->count--;
+
+    return type;
 }
 
 void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
@@ -234,6 +269,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Get local - index: %d (position: 0x%08x, size: %d, value: %d)", localIndex, local->position, local->size, value);
 
             wasmu_pushInt(context, local->size, value);
+            wasmu_pushType(context, local->valueType);
 
             break;
         }
@@ -249,8 +285,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_ADD:
         {
-            wasmu_I32 a = wasmu_popInt(context, 4);
-            wasmu_I32 b = wasmu_popInt(context, 4);
+            wasmu_I32 a = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_I32 b = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
 
             WASMU_DEBUG_LOG("Add I32 - a: %d, b: %d (result: %d)", a, b, a + b);
 
