@@ -13,6 +13,12 @@ typedef enum {
 } wasmu_ValueType;
 
 typedef enum {
+    WASMU_LOCAL_TYPE_PARAMETER,
+    WASMU_LOCAL_TYPE_RESULT,
+    WASMU_LOCAL_TYPE_LOCAL
+} wasmu_LocalType;
+
+typedef enum {
     WASMU_SECTION_CUSTOM = 0,
     WASMU_SECTION_TYPE = 1,
     WASMU_SECTION_IMPORT = 2,
@@ -68,6 +74,7 @@ typedef struct wasmu_ValueStack {
 
 typedef struct wasmu_StackLocal {
     wasmu_Count position;
+    wasmu_LocalType type;
     wasmu_ValueType valueType;
     wasmu_Count size;
 } wasmu_StackLocal;

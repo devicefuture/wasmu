@@ -36,6 +36,39 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
 
             wasmu_StackLocal local = {
                 .position = currentPosition,
+                .type = WASMU_LOCAL_TYPE_PARAMETER,
+                .valueType = type,
+                .size = size
+            };
+
+            WASMU_ADD_ENTRY(context->currentStackLocals, context->currentStackLocalsCount, local);
+
+            currentPosition += size;
+        }
+
+        for (wasmu_Count i = 0; i < context->activeFunctionSignature->resultsCount; i++) {
+            wasmu_ValueType type = context->activeFunctionSignature->results[i];
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_StackLocal local = {
+                .position = currentPosition,
+                .type = WASMU_LOCAL_TYPE_RESULT,
+                .valueType = type,
+                .size = size
+            };
+
+            WASMU_ADD_ENTRY(context->currentStackLocals, context->currentStackLocalsCount, local);
+
+            currentPosition += size;
+        }
+
+        for (wasmu_Count i = 0; i < context->activeFunction->localsCount; i++) {
+            wasmu_ValueType type = context->activeFunction->locals[i];
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_StackLocal local = {
+                .position = currentPosition,
+                .type = WASMU_LOCAL_TYPE_LOCAL,
                 .valueType = type,
                 .size = size
             };
@@ -277,6 +310,44 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_END:
         {
             WASMU_DEBUG_LOG("End");
+
+            wasmu_ValueStack* stack = &context->valueStack;
+
+            wasmu_Count resultsOffset = 0;
+
+            // First, get the total sizes of parameters and locals, popping all types
+
+            for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
+                wasmu_StackLocal local = context->currentStackLocals[i];
+
+                if (local.type == WASMU_LOCAL_TYPE_PARAMETER || local.type == WASMU_LOCAL_TYPE_LOCAL) {
+                    resultsOffset += local.size;
+                }
+
+                wasmu_popType(context);
+            }
+
+            // Then if there are parameters or locals, remove them from the stack, shifting the results up
+
+            if (resultsOffset > 0) {
+                wasmu_Count base = context->currentValueStackBase;
+
+                for (wasmu_Count i = 0; i < resultsOffset; i++) {
+                    stack->data[base + i] = stack->data[base + resultsOffset + i];
+                }
+
+                stack->position -= resultsOffset;
+            }
+
+            // Finally, pop non-result items from end of stack, re-adding result types
+
+            for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
+                wasmu_StackLocal local = context->currentStackLocals[i];
+
+                if (local.type == WASMU_LOCAL_TYPE_RESULT) {
+                    wasmu_pushType(context, local.valueType);
+                }
+            }
 
             wasmu_popCall(context, WASMU_NULL);
 
