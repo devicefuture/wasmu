@@ -4,7 +4,9 @@ typedef enum {
     WASMU_ERROR_STATE_MEMORY_OOB,
     WASMU_ERROR_STATE_CODE_BODY_MISMATCH,
     WASMU_ERROR_STATE_STACK_UNDERFLOW,
-    WASMU_ERROR_STATE_TYPE_MISMATCH
+    WASMU_ERROR_STATE_TYPE_MISMATCH,
+    WASMU_ERROR_STATE_REACHED_UNREACHABLE,
+    WASMU_ERROR_STATE_INVALID_INDEX
 } wasmu_ErrorState;
 
 typedef enum {
@@ -51,6 +53,7 @@ typedef struct wasmu_Call {
     wasmu_Count moduleIndex;
     wasmu_Count functionIndex;
     wasmu_Count position;
+    wasmu_Count typeStackBase;
     wasmu_Count valueStackBase;
 } wasmu_Call;
 
@@ -87,8 +90,10 @@ typedef struct wasmu_Context {
     wasmu_TypeStack typeStack;
     wasmu_ValueStack valueStack;
     struct wasmu_Module* activeModule;
+    wasmu_Count activeModuleIndex;
     struct wasmu_Function* activeFunction;
     struct wasmu_FunctionSignature* activeFunctionSignature;
+    wasmu_Count currentTypeStackBase;
     wasmu_Count currentValueStackBase;
     wasmu_StackLocal* currentStackLocals;
     wasmu_Count currentStackLocalsCount;

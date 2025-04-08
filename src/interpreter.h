@@ -20,6 +20,7 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     wasmu_Module* module = *moduleEntry;
 
     context->activeModule = module;
+    context->activeModuleIndex = call.moduleIndex;
 
     if (context->activeModule) {
         context->activeFunction = WASMU_GET_ENTRY(module->functions, module->functionsCount, call.functionIndex);
@@ -79,6 +80,7 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
         }
     }
 
+    context->currentTypeStackBase = call.typeStackBase;
     context->currentValueStackBase = call.valueStackBase;
 }
 
@@ -214,6 +216,11 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
         return WASMU_FALSE;
     }
 
+    if (context->callStack.count > 0) {
+        // Save current position on current topmost call
+        context->callStack.calls[context->callStack.count - 1].position = module->position;
+    }
+
     module->position = function->codePosition;
 
     wasmu_Count valueStackBase = context->valueStack.position;
@@ -235,6 +242,7 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
         .moduleIndex = moduleIndex,
         .functionIndex = functionIndex,
         .position = function->codePosition,
+        .typeStackBase = context->typeStack.count - signature->parametersCount - function->localsCount,
         .valueStackBase = valueStackBase
     });
 
@@ -292,6 +300,31 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
     WASMU_DEBUG_LOG("Execute opcode: 0x%02x", opcode);
 
     switch (opcode) {
+        case WASMU_OP_UNREACHABLE:
+        {
+            WASMU_DEBUG_LOG("Reached unreachable operation");
+            context->errorState = WASMU_ERROR_STATE_REACHED_UNREACHABLE;
+            return WASMU_FALSE;
+        }
+
+        case WASMU_OP_NOP:
+            break;
+
+        case WASMU_OP_CALL:
+        {
+            wasmu_Count functionIndex = wasmu_readUInt(module);
+
+            WASMU_DEBUG_LOG("Call function - index: %d", functionIndex);
+
+            if (!wasmu_callFunctionByIndex(context, context->activeModuleIndex, functionIndex)) {
+                WASMU_DEBUG_LOG("Unknown function", context->activeModuleIndex, functionIndex);
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            break;
+        }
+
         case WASMU_OP_LOCAL_GET:
         {
             wasmu_Count localIndex = wasmu_readUInt(module);
@@ -308,30 +341,43 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         }
 
         case WASMU_OP_END:
+        case WASMU_OP_RETURN:
         {
+            // TODO: Move this code into a new function so that we can handle `end` instructions relating to blocks too
+
             WASMU_DEBUG_LOG("End");
 
             wasmu_ValueStack* stack = &context->valueStack;
 
             wasmu_Count resultsOffset = 0;
+            wasmu_Count totalLocalsSize = 0;
 
-            // First, get the total sizes of parameters and locals, popping all types
+            // First, get the total sizes of parameters, results and locals, popping all types
 
             for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
                 wasmu_StackLocal local = context->currentStackLocals[i];
 
+                totalLocalsSize += local.size;
+
                 if (local.type == WASMU_LOCAL_TYPE_PARAMETER || local.type == WASMU_LOCAL_TYPE_LOCAL) {
                     resultsOffset += local.size;
                 }
-
-                wasmu_popType(context);
             }
 
-            // Then if there are parameters or locals, remove them from the stack, shifting the results up
+            wasmu_Count base = context->currentValueStackBase;
+            wasmu_Count nonLocalsSize = stack->position - base - totalLocalsSize;
+
+            // Ensure that results offset also accounts for stack values related to parameters, results and locals
+
+            if (nonLocalsSize > 0) {
+                WASMU_DEBUG_LOG("Popping non-locals - size %d", nonLocalsSize);
+
+                resultsOffset += nonLocalsSize;
+            }
+
+            // Then if there are non-result values, remove them from the stack to clean it, shifting the results up
 
             if (resultsOffset > 0) {
-                wasmu_Count base = context->currentValueStackBase;
-
                 for (wasmu_Count i = 0; i < resultsOffset; i++) {
                     stack->data[base + i] = stack->data[base + resultsOffset + i];
                 }
@@ -339,7 +385,9 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 stack->position -= resultsOffset;
             }
 
-            // Finally, pop non-result items from end of stack, re-adding result types
+            // Finally, restore type stack base and re-add result types to type stack
+
+            context->typeStack.count = context->currentTypeStackBase;
 
             for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
                 wasmu_StackLocal local = context->currentStackLocals[i];
@@ -349,7 +397,13 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 }
             }
 
+            // Now we can jump back to where we were in the calling function by popping from the call stack and restoring the position
+
             wasmu_popCall(context, WASMU_NULL);
+
+            if (context->callStack.count > 0) {
+                module->position = context->callStack.calls[context->callStack.count - 1].position;
+            }
 
             break;
         }
@@ -385,7 +439,7 @@ wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
     }
 
     while (wasmu_isRunning(module->context)) {
-        WASMU_DEBUG_LOG("Step");
+        WASMU_DEBUG_LOG("Step - position: 0x%08x", module->position);
 
         if (!wasmu_step(module->context)) {
             return WASMU_FALSE;

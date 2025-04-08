@@ -14,8 +14,10 @@ wasmu_Context* wasmu_newContext() {
     context->valueStack.size = 0;
     context->valueStack.position = 0;
     context->activeModule = WASMU_NULL;
+    context->activeModuleIndex = 0;
     context->activeFunction = WASMU_NULL;
     context->activeFunctionSignature = WASMU_NULL;
+    context->currentTypeStackBase = 0;
     context->currentValueStackBase = 0;
     context->currentStackLocals = WASMU_MALLOC(0);
     context->currentStackLocalsCount = 0;
