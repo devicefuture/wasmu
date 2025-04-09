@@ -54,6 +54,8 @@ TEST {
 
     PART("Run function calls");
 
+    // TODO: Somehow make code for these tests less repetitive
+
     printf("Get function: \"setLocal\"\n");
 
     wasmu_Function* setLocal = wasmu_getExportedFunction(module, "setLocal");
@@ -88,6 +90,58 @@ TEST {
     ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
 
     ASSERT(wasmu_popInt(context, 4) == 24, "Result is not 24");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Get function: \"dropTest\"\n");
+
+    wasmu_Function* dropTest = wasmu_getExportedFunction(module, "dropTest");
+
+    ASSERT(dropTest, "Function not found");
+
+    wasmu_pushInt(context, 4, 12); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, dropTest), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 12, "Result is not 12");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Get function: \"selectTest\"\n");
+
+    wasmu_Function* selectTest = wasmu_getExportedFunction(module, "selectTest");
+
+    ASSERT(selectTest, "Function not found");
+
+    printf("Call for true scenario\n");
+
+    wasmu_pushInt(context, 4, 1); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, selectTest), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 10, "Result is not 10");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Call for false scenario\n");
+
+    wasmu_pushInt(context, 4, 0); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, selectTest), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 20, "Result is not 20");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
 
     PASS();

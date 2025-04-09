@@ -376,6 +376,24 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_NOP:
             break;
 
+        case WASMU_OP_END:
+        {
+            WASMU_DEBUG_LOG("End");
+
+            // TODO: Also handle leaving structured instructions
+
+            wasmu_returnFromFunction(context);
+
+            break;
+        }
+
+        case WASMU_OP_RETURN:
+        {
+            WASMU_DEBUG_LOG("Return");
+            wasmu_returnFromFunction(context);
+            break;
+        }
+
         case WASMU_OP_CALL:
         {
             wasmu_Count functionIndex = wasmu_readUInt(module);
@@ -386,6 +404,43 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 WASMU_DEBUG_LOG("Unknown function", context->activeModuleIndex, functionIndex);
                 context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
                 return WASMU_FALSE;
+            }
+
+            break;
+        }
+
+        case WASMU_OP_DROP:
+        {
+            wasmu_ValueType type = wasmu_popType(context);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            WASMU_DEBUG_LOG("Drop - type: 0x%02x (size: %d)", type, size);
+
+            if (context->valueStack.position < size) {
+                WASMU_DEBUG_LOG("Value stack underflow");
+                context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+                return WASMU_FALSE;
+            }
+
+            context->valueStack.position -= size;
+
+            break;
+        }
+
+        case WASMU_OP_SELECT:
+        {
+            wasmu_Int condition = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_Count ifFalseSize = wasmu_getValueTypeSize(wasmu_popType(context));
+            wasmu_Int ifFalse = wasmu_popInt(context, ifFalseSize);
+            wasmu_Count ifTrueSize = wasmu_getValueTypeSize(wasmu_popType(context));
+            wasmu_Int ifTrue = wasmu_popInt(context, ifTrueSize);
+
+            WASMU_DEBUG_LOG("Select - ifTrue: %d, ifFalse: %d, condition: %d (ifTrueSize: %d, ifFalseSize: %d)", ifTrue, ifFalse, condition, ifTrueSize, ifFalseSize);
+
+            if (condition) {
+                wasmu_pushInt(context, ifTrueSize, ifTrue);
+            } else {
+                wasmu_pushInt(context, ifFalseSize, ifFalse);
             }
 
             break;
@@ -426,21 +481,15 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
-        case WASMU_OP_END:
+        case WASMU_OP_I32_CONST:
         {
-            WASMU_DEBUG_LOG("End");
+            wasmu_I32 value = wasmu_readInt(module);
 
-            // TODO: Also handle leaving structured instructions
+            WASMU_DEBUG_LOG("I32 const - value: %d", value);
 
-            wasmu_returnFromFunction(context);
+            wasmu_pushInt(context, 4, value);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
 
-            break;
-        }
-
-        case WASMU_OP_RETURN:
-        {
-            WASMU_DEBUG_LOG("Return");
-            wasmu_returnFromFunction(context);
             break;
         }
 

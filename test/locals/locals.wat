@@ -63,4 +63,15 @@
         local.get 0
         i32.add
     )
+    (func (export "dropTest") (param i32) (result i32)
+        local.get 0
+        i32.const 10
+        drop
+    )
+    (func (export "selectTest") (param i32) (result i32)
+        i32.const 10
+        i32.const 20
+        local.get 0
+        select
+    )
 )
