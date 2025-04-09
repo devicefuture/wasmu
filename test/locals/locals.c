@@ -52,7 +52,7 @@ TEST {
         ASSERT(function->localsCount == expectedFunction.localsCount, "Locals count is incorrect");
     }
 
-    PART("Run local manipulation functions");
+    PART("Run function calls");
 
     printf("Get function: \"setLocal\"\n");
 
@@ -65,6 +65,24 @@ TEST {
     ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
 
     ASSERT(wasmu_runFunction(module, setLocal), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 24, "Result is not 24");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Get function: \"teeLocal\"\n");
+
+    wasmu_Function* teeLocal = wasmu_getExportedFunction(module, "teeLocal");
+
+    ASSERT(teeLocal, "Function not found");
+
+    wasmu_pushInt(context, 4, 12); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, teeLocal), "Error encountered while running function");
 
     ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
     ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");

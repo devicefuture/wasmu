@@ -101,7 +101,7 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
 }
 
 wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
-    wasmu_Count size = wasmu_readInt(module);
+    wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count exportsCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < exportsCount; i++) {
@@ -139,7 +139,7 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
 }
 
 wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
-    wasmu_Count size = wasmu_readInt(module);
+    wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count bodiesCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < bodiesCount; i++) {

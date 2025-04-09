@@ -1,4 +1,5 @@
 (module
+    ;; Expected functions (checking signatures only; not executing)
     (func (export "noLocals")
         nop
     )
@@ -48,11 +49,18 @@
         i32.const 1
         f32.const 2
     )
+    ;; Expected function calls (not checking signatures, but calling and checking result)
     (func (export "setLocal") (param i32) (result i32) (local i32)
         local.get 0
         local.set 1
         local.get 0
         local.get 1
+        i32.add
+    )
+    (func (export "teeLocal") (param i32) (result i32) (local i32)
+        local.get 0
+        local.tee 1
+        local.get 0
         i32.add
     )
 )

@@ -407,6 +407,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         }
 
         case WASMU_OP_LOCAL_SET:
+        case WASMU_OP_LOCAL_TEE:
         {
             wasmu_Count localIndex = wasmu_readUInt(module);
 
@@ -416,6 +417,11 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Set local - index: %d (position: 0x%08x, size: %d, value: %d)", localIndex, local->position, local->size, value);
 
             wasmu_stackSetInt(context, local->position, local->size, value);
+
+            if (opcode == WASMU_OP_LOCAL_TEE) {
+                wasmu_pushInt(context, local->size, value);
+                wasmu_pushType(context, local->valueType);
+            }
 
             break;
         }

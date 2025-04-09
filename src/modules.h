@@ -51,7 +51,7 @@ wasmu_UInt wasmu_readUInt(wasmu_Module* module) {
         byte = WASMU_NEXT();
         result |= (byte & 0b01111111) << shift;
         shift += 7;
-    } while (byte & 0b10000000 == 0);
+    } while ((byte & 0b10000000) != 0);
 
     return result;
 }
@@ -68,7 +68,7 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
         byte = WASMU_NEXT();
         result |= (byte & 0b01111111) << shift;
         shift += 7;
-    } while (byte & 0b10000000 == 0);
+    } while ((byte & 0b10000000) != 0);
 
     if (shift < sizeof(result) / 8 && result & 0b10000000) {
         result |= (~0 << shift);
