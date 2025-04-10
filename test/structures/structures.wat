@@ -8,4 +8,42 @@
         local.get 0
         i32.add
     )
+    (func (export "branchInBlock") (result i32)
+        (block (result i32)
+            i32.const 1
+            br 0
+            drop
+            i32.const 2
+        )
+        i32.const 3
+        i32.add
+    )
+    (func (export "nearBranchInNestedBlocks") (result i32)
+        (block (result i32)
+            (block (result i32)
+                i32.const 1
+                br 0
+                drop
+                i32.const 2
+            )
+            drop
+            i32.const 3
+        )
+        i32.const 4
+        i32.add
+    )
+    (func (export "farBranchInNestedBlocks") (result i32)
+        (block (result i32)
+            (block (result i32)
+                i32.const 1
+                br 1
+                drop
+                i32.const 2
+            )
+            drop
+            i32.const 3
+        )
+        i32.const 4
+        i32.add
+    )
 )

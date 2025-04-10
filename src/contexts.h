@@ -24,6 +24,9 @@ wasmu_Context* wasmu_newContext() {
     context->currentValueStackBase = 0;
     context->currentStackLocals = WASMU_MALLOC(0);
     context->currentStackLocalsCount = 0;
+    context->fastForward = WASMU_FALSE;
+    context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;
+    context->fastForwardLabelDepth = 0;
 
     WASMU_INIT_ENTRIES(context->modules, context->modulesCount);
 

@@ -116,6 +116,9 @@ typedef struct wasmu_Context {
     wasmu_Count currentValueStackBase;
     wasmu_StackLocal* currentStackLocals;
     wasmu_Count currentStackLocalsCount;
+    wasmu_Bool fastForward;
+    wasmu_Opcode fastForwardTargetOpcode;
+    wasmu_Count fastForwardLabelDepth;
 } wasmu_Context;
 
 typedef struct wasmu_Module {
@@ -188,5 +191,6 @@ void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value);
 wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes);
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);
 wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function);
+wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult);
 wasmu_Bool wasmu_step(wasmu_Context* context);
 wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function);

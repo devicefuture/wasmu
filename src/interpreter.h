@@ -8,6 +8,10 @@
     } \
 } while (0)
 
+#define WASMU_FF_SKIP_HERE() if (context->fastForward) {break;}
+#define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
+#define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
+
 wasmu_Bool pushLabel(wasmu_Context* context, wasmu_LabelType labelType) {
     wasmu_LabelStack* stack = &context->labelStack;
 
@@ -434,6 +438,52 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
     }
 }
 
+wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult) {
+    WASMU_DEBUG_LOG("Begin fast forward - targetOpcode: 0x%02x", targetOpcode);
+
+    context->fastForward = WASMU_TRUE;
+    context->fastForwardTargetOpcode = targetOpcode;
+    context->fastForwardLabelDepth = 0;
+
+    while (context->fastForward) {
+        if (!wasmu_step(context)) {
+            context->fastForward = WASMU_FALSE;
+
+            return WASMU_FALSE;
+        }
+    }
+
+    WASMU_DEBUG_LOG("End fast forward - position: 0x%08x", context->activeModule->position);
+
+    if (positionResult) {
+        *positionResult = context->activeModule->position;
+    }
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_fastForwardStepInLabel(wasmu_Context* context) {
+    if (context->fastForward) {
+        context->fastForwardLabelDepth++;
+    }
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_fastForwardStepOutLabel(wasmu_Context* context) {
+    if (context->fastForward) {
+        if (context->fastForwardLabelDepth == 0) {
+            WASMU_DEBUG_LOG("Label depth counter underflow while fast forwarding");
+            context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+            return WASMU_FALSE;
+        }
+
+        context->fastForwardLabelDepth--;
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_step(wasmu_Context* context) {
     if (!wasmu_isRunning(context)) {
         return WASMU_FALSE;
@@ -447,11 +497,31 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
     wasmu_U8 opcode = WASMU_NEXT();
 
-    WASMU_DEBUG_LOG("Execute opcode: 0x%02x", opcode);
+    if (context->errorState == WASMU_ERROR_STATE_MEMORY_OOB) {
+        WASMU_DEBUG_LOG("No more opcodes to execute");
+        return WASMU_FALSE;
+    }
+
+    if (context->fastForward) {
+        if (context->fastForwardLabelDepth == 0 && opcode == context->fastForwardTargetOpcode) {
+            WASMU_DEBUG_LOG("Match opcode - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
+
+            module->position--;
+            context->fastForward = WASMU_FALSE;
+
+            return WASMU_TRUE;
+        }
+
+        WASMU_DEBUG_LOG("Skip over instruction - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
+    } else {
+        WASMU_DEBUG_LOG("Execute instruction - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
+    }
 
     switch (opcode) {
         case WASMU_OP_UNREACHABLE:
         {
+            WASMU_FF_SKIP_HERE();
+
             WASMU_DEBUG_LOG("Reached unreachable operation");
             context->errorState = WASMU_ERROR_STATE_REACHED_UNREACHABLE;
             return WASMU_FALSE;
@@ -464,7 +534,12 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             wasmu_U8 blockType = WASMU_NEXT();
 
+            WASMU_FF_STEP_IN();
+            WASMU_FF_SKIP_HERE();
+
             // TODO: Count number of results to return so stack can be cleaned when leaving block
+
+            WASMU_DEBUG_LOG("Block");
 
             pushLabel(context, WASMU_LABEL_TYPE_BLOCK);
 
@@ -473,6 +548,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_END:
         {
+            WASMU_FF_STEP_OUT();
+
             wasmu_Label label;
 
             if (wasmu_getLabel(context, 0, context->callStack.count - 1, &label)) {
@@ -488,8 +565,41 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_BR:
+        {
+            wasmu_Count labelIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Label label;
+
+            WASMU_DEBUG_LOG("Break - labelIndex: %d", labelIndex);
+
+            if (!wasmu_getLabel(context, labelIndex, context->callStack.count - 1, &label)) {
+                WASMU_DEBUG_LOG("Label stack underflow");
+                context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+                return WASMU_FALSE;
+            }
+
+            WASMU_DEBUG_LOG("Checking label from position 0x%08x", label.position);
+
+            module->position = label.position;
+
+            wasmu_Count position;
+
+            if (!wasmu_fastForward(context, WASMU_OP_END, &position)) {
+                return WASMU_FALSE;
+            }
+
+            module->position = position;
+
+            break;
+        }
+
         case WASMU_OP_RETURN:
         {
+            WASMU_FF_SKIP_HERE();
+
             WASMU_DEBUG_LOG("Return");
             wasmu_returnFromFunction(context);
             break;
@@ -498,6 +608,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_CALL:
         {
             wasmu_Count functionIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
 
             WASMU_DEBUG_LOG("Call function - index: %d", functionIndex);
 
@@ -512,6 +624,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_DROP:
         {
+            WASMU_FF_SKIP_HERE();
+
             wasmu_ValueType type = wasmu_popType(context);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
@@ -530,6 +644,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_SELECT:
         {
+            WASMU_FF_SKIP_HERE();
+
             wasmu_Int condition = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
             wasmu_Count ifFalseSize = wasmu_getValueTypeSize(wasmu_popType(context));
             wasmu_Int ifFalse = wasmu_popInt(context, ifFalseSize);
@@ -551,6 +667,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             wasmu_Count localIndex = wasmu_readUInt(module);
 
+            WASMU_FF_SKIP_HERE();
+
             wasmu_StackLocal* local = WASMU_GET_ENTRY(context->currentStackLocals, context->currentStackLocalsCount, localIndex);
             wasmu_Int value = wasmu_stackGetInt(context, local->position, local->size);
 
@@ -566,6 +684,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_LOCAL_TEE:
         {
             wasmu_Count localIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
 
             wasmu_StackLocal* local = WASMU_GET_ENTRY(context->currentStackLocals, context->currentStackLocalsCount, localIndex);
             wasmu_Int value = wasmu_popInt(context, local->size); WASMU_ASSERT_POP_TYPE(local->valueType);
@@ -586,6 +706,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             wasmu_I32 value = wasmu_readInt(module);
 
+            WASMU_FF_SKIP_HERE();
+
             WASMU_DEBUG_LOG("I32 const - value: %d", value);
 
             wasmu_pushInt(context, 4, value);
@@ -596,6 +718,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_ADD:
         {
+            WASMU_FF_SKIP_HERE();
+
             wasmu_I32 a = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
             wasmu_I32 b = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
 
@@ -625,7 +749,7 @@ wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
     }
 
     while (wasmu_isRunning(module->context)) {
-        WASMU_DEBUG_LOG("Step - position: 0x%08x", module->position);
+        WASMU_DEBUG_LOG("Step");
 
         if (!wasmu_step(module->context)) {
             return WASMU_FALSE;
