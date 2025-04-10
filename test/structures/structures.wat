@@ -46,4 +46,18 @@
         i32.const 4
         i32.add
     )
+    (func (export "loopCumulativeSum") (param $count i32) (result i32) (local $sum i32)
+        (loop $iter
+            local.get $sum
+            local.get $count
+            i32.add
+            local.set $sum
+            local.get $count
+            i32.const 1
+            i32.sub
+            local.tee $count
+            br_if $iter
+        )
+        local.get $sum
+    )
 )

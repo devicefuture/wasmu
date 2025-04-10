@@ -12,7 +12,7 @@
 #define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
 #define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
 
-wasmu_Bool pushLabel(wasmu_Context* context, wasmu_LabelType labelType) {
+wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode) {
     wasmu_LabelStack* stack = &context->labelStack;
 
     if (context->callStack.count == 0) {
@@ -27,7 +27,7 @@ wasmu_Bool pushLabel(wasmu_Context* context, wasmu_LabelType labelType) {
     }
 
     stack->labels[stack->count - 1] = (wasmu_Label) {
-        .labelType = labelType,
+        .opcode = opcode,
         .callIndex = context->callStack.count - 1,
         .position = context->activeModule->position
     };
@@ -531,6 +531,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
 
         case WASMU_OP_BLOCK:
+        case WASMU_OP_LOOP:
         {
             wasmu_U8 blockType = WASMU_NEXT();
 
@@ -539,9 +540,9 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             // TODO: Count number of results to return so stack can be cleaned when leaving block
 
-            WASMU_DEBUG_LOG("Block");
+            WASMU_DEBUG_LOG("Block/loop");
 
-            pushLabel(context, WASMU_LABEL_TYPE_BLOCK);
+            wasmu_pushLabel(context, opcode);
 
             break;
         }
@@ -566,6 +567,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         }
 
         case WASMU_OP_BR:
+        case WASMU_OP_BR_IF:
         {
             wasmu_Count labelIndex = wasmu_readUInt(module);
 
@@ -573,7 +575,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             wasmu_Label label;
 
-            WASMU_DEBUG_LOG("Break - labelIndex: %d", labelIndex);
+            WASMU_DEBUG_LOG("Break/break if - labelIndex: %d", labelIndex);
 
             if (!wasmu_getLabel(context, labelIndex, context->callStack.count - 1, &label)) {
                 WASMU_DEBUG_LOG("Label stack underflow");
@@ -581,11 +583,26 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 return WASMU_FALSE;
             }
 
+            if (opcode == WASMU_OP_BR_IF) {
+                wasmu_Int condition = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+                WASMU_DEBUG_LOG("Break if - condition: %d", condition);
+
+                if (!condition) {
+                    break;
+                }
+            }
+
             WASMU_DEBUG_LOG("Checking label from position 0x%08x", label.position);
 
             module->position = label.position;
 
             wasmu_Count position;
+
+            if (label.opcode == WASMU_OP_LOOP) {
+                // No need to fast forward since we're looping back to start
+                break;
+            }
 
             if (!wasmu_fastForward(context, WASMU_OP_END, &position)) {
                 return WASMU_FALSE;
@@ -720,12 +737,26 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_I32 a = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
             wasmu_I32 b = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_I32 a = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
 
             WASMU_DEBUG_LOG("Add I32 - a: %d, b: %d (result: %d)", a, b, a + b);
 
             wasmu_pushInt(context, 4, a + b);
+
+            break;
+        }
+
+        case WASMU_OP_I32_SUB:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_I32 b = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_I32 a = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            WASMU_DEBUG_LOG("Sub I32 - a: %d, b: %d (result: %d)", a, b, a - b);
+
+            wasmu_pushInt(context, 4, a - b);
 
             break;
         }
