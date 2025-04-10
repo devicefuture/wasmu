@@ -8,6 +8,83 @@
     } \
 } while (0)
 
+wasmu_Bool pushLabel(wasmu_Context* context, wasmu_LabelType labelType) {
+    wasmu_LabelStack* stack = &context->labelStack;
+
+    if (context->callStack.count == 0) {
+        return WASMU_FALSE;
+    }
+
+    stack->count++;
+
+    if (stack->count > stack->size) {
+        stack->size = stack->count;
+        stack->labels = WASMU_REALLOC(stack->labels, stack->size * sizeof(wasmu_Label));
+    }
+
+    stack->labels[stack->count - 1] = (wasmu_Label) {
+        .labelType = labelType,
+        .callIndex = context->callStack.count - 1,
+        .position = context->activeModule->position
+    };
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_popLabel(wasmu_Context* context, wasmu_Count targetCallIndex, wasmu_Label* returnedLabel) {
+    wasmu_LabelStack* stack = &context->labelStack;
+
+    if (stack->count == 0) {
+        WASMU_DEBUG_LOG("Label stack underflow");
+        context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+        return WASMU_FALSE;
+    }
+
+    wasmu_Label label = stack->labels[stack->count - 1];
+
+    if (targetCallIndex != -1 && label.callIndex != targetCallIndex) {
+        WASMU_DEBUG_LOG("Label stack underflow for this function call");
+        context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+        return WASMU_FALSE;
+    }
+
+    if (returnedLabel) {
+        *returnedLabel = label;
+    }
+
+    stack->count--;
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_getLabel(wasmu_Context* context, wasmu_Count labelIndex, wasmu_Count targetCallIndex, wasmu_Label* returnedLabel) {
+    // Function does not throw error as callers may use it to check if a label exists
+
+    wasmu_LabelStack* stack = &context->labelStack;
+
+    if (labelIndex >= stack->count) {
+        return WASMU_FALSE;
+    }
+
+    /*
+        Label indexes start from the end of the label stack instead of the
+        start, so they must be converted into absolute indexes to reference a
+        label on the stack's data structure.
+    */
+
+    wasmu_Label label = stack->labels[stack->count - labelIndex - 1];
+
+    if (targetCallIndex != -1 && label.callIndex != targetCallIndex) {
+        return WASMU_FALSE;
+    }
+
+    if (returnedLabel) {
+        *returnedLabel = label;
+    }
+
+    return WASMU_TRUE;
+}
+
 void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     /*
         This is done to cache pointers to the active module, function and
@@ -104,6 +181,8 @@ wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
     wasmu_CallStack* stack = &context->callStack;
 
     if (stack->count == 0) {
+        WASMU_DEBUG_LOG("Call stack underflow");
+        context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
         return WASMU_FALSE;
     }
 
@@ -112,6 +191,11 @@ wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
     }
 
     stack->count--;
+
+    while (context->labelStack.count > 0 && context->labelStack.labels[context->labelStack.count - 1].callIndex >= stack->count) {
+        // Remove labels from label stack that reference a call that no longer exists
+        wasmu_popLabel(context, -1, WASMU_NULL);
+    }
 
     if (stack->count > 0) {
         wasmu_populateActiveCallInfo(context, stack->calls[stack->count - 1]);
@@ -376,13 +460,30 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_NOP:
             break;
 
+        case WASMU_OP_BLOCK:
+        {
+            wasmu_U8 blockType = WASMU_NEXT();
+
+            // TODO: Count number of results to return so stack can be cleaned when leaving block
+
+            pushLabel(context, WASMU_LABEL_TYPE_BLOCK);
+
+            break;
+        }
+
         case WASMU_OP_END:
         {
-            WASMU_DEBUG_LOG("End");
+            wasmu_Label label;
 
-            // TODO: Also handle leaving structured instructions
+            if (wasmu_getLabel(context, 0, context->callStack.count - 1, &label)) {
+                WASMU_DEBUG_LOG("End - leave structured instruction");
 
-            wasmu_returnFromFunction(context);
+                wasmu_popLabel(context, -1, WASMU_NULL);
+            } else {
+                WASMU_DEBUG_LOG("End - return from function");
+
+                wasmu_returnFromFunction(context);
+            }
 
             break;
         }
@@ -401,7 +502,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Call function - index: %d", functionIndex);
 
             if (!wasmu_callFunctionByIndex(context, context->activeModuleIndex, functionIndex)) {
-                WASMU_DEBUG_LOG("Unknown function", context->activeModuleIndex, functionIndex);
+                WASMU_DEBUG_LOG("Unknown function");
                 context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
                 return WASMU_FALSE;
             }

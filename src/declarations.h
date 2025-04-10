@@ -44,6 +44,12 @@ typedef enum wasmu_ExportType {
     WASMU_EXPORT_TYPE_FUNCTION = 0x00
 } wasmu_ExportType;
 
+typedef enum wasmu_LabelType {
+    WASMU_LABEL_TYPE_BLOCK,
+    WASMU_LABEL_TYPE_LOOP,
+    WASMU_LABEL_TYPE_IF
+} wasmu_LabelType;
+
 typedef struct wasmu_String {
     wasmu_Count size;
     wasmu_U8* chars;
@@ -62,6 +68,18 @@ typedef struct wasmu_CallStack {
     wasmu_Count size;
     wasmu_Count count;
 } wasmu_CallStack;
+
+typedef struct wasmu_Label {
+    wasmu_LabelType labelType;
+    wasmu_Count callIndex;
+    wasmu_Count position;
+} wasmu_Label;
+
+typedef struct wasmu_LabelStack {
+    wasmu_Label* labels;
+    wasmu_Count size;
+    wasmu_Count count;
+} wasmu_LabelStack;
 
 typedef struct wasmu_TypeStack {
     wasmu_ValueType* types;
@@ -87,6 +105,7 @@ typedef struct wasmu_Context {
     struct wasmu_Module** modules;
     wasmu_Count modulesCount;
     wasmu_CallStack callStack;
+    wasmu_LabelStack labelStack;
     wasmu_TypeStack typeStack;
     wasmu_ValueStack valueStack;
     struct wasmu_Module* activeModule;
