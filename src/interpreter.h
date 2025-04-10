@@ -251,7 +251,7 @@ wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_
     wasmu_ValueStack* stack = &context->valueStack;
 
     for (wasmu_Count i = 0; i < bytes; i++) {
-        value |= stack->data[position + i] >> (i * 8);
+        value |= stack->data[position + i] << (i * 8);
     }
 
     return value;
