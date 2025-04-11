@@ -6,5 +6,8 @@
         "string": "c",
         "istream": "c",
         "streambuf": "c"
+    },
+    "search.exclude": {
+        "**/dist": true
     }
 }
