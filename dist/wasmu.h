@@ -22,9 +22,7 @@
 
 #endif
 
-#define WASMU_USE_STDLIB
-
-#ifdef WASMU_USE_STDLIB
+#ifndef WASMU_USE_CUSTOM_STDLIB
 
 #include <stdio.h>
 #include <stdlib.h>
