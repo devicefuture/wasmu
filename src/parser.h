@@ -46,7 +46,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_Count parametersCount = wasmu_readUInt(module);
 
                 for (wasmu_Count j = 0; j < parametersCount; j++) {
-                    wasmu_ValueType parameterType = WASMU_NEXT();
+                    wasmu_ValueType parameterType = (wasmu_ValueType)WASMU_NEXT();
 
                     signature.parametersStackSize += wasmu_getValueTypeSize(parameterType);
 
@@ -56,7 +56,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_Count resultsCount = wasmu_readUInt(module);
                 
                 for (wasmu_Count j = 0; j < resultsCount; j++) {
-                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, WASMU_NEXT());
+                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, (wasmu_ValueType)WASMU_NEXT());
                 }
 
                 WASMU_ADD_ENTRY(module->functionSignatures, module->functionSignaturesCount, signature);
@@ -105,22 +105,22 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     wasmu_Count exportsCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < exportsCount; i++) {
-        wasmu_Export export;
+        wasmu_Export moduleExport;
 
-        export.name = wasmu_readString(module);
-        export.type = WASMU_NEXT();
+        moduleExport.name = wasmu_readString(module);
+        moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        switch (export.type) {
+        switch (moduleExport.type) {
             case WASMU_EXPORT_TYPE_FUNCTION:
             {
                 WASMU_DEBUG_LOG("Export type: function");
 
-                export.data.asFunctionIndex = wasmu_readUInt(module);
+                moduleExport.data.asFunctionIndex = wasmu_readUInt(module);
 
                 #ifdef WASMU_DEBUG
-                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(export.name);
+                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
 
-                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, export.data.asFunctionIndex);
+                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, moduleExport.data.asFunctionIndex);
 
                     WASMU_FREE(nameChars);
                 #endif
@@ -134,8 +134,10 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
                 return WASMU_FALSE;
         }
 
-        WASMU_ADD_ENTRY(module->exports, module->exportsCount, export);
+        WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
     }
+
+    return WASMU_TRUE;
 }
 
 wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
@@ -163,7 +165,7 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
         for (wasmu_Count j = 0; j < localDeclarationsCount; j++) {
             wasmu_Count typeLocalsCount = wasmu_readUInt(module);
-            wasmu_ValueType type = WASMU_NEXT();
+            wasmu_ValueType type = (wasmu_ValueType)WASMU_NEXT();
 
             WASMU_DEBUG_LOG("Add local declaration - type 0x%02x, count %d", type, typeLocalsCount);
 

@@ -79,7 +79,7 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
 
 wasmu_String wasmu_readString(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
-    wasmu_U8* chars = WASMU_MALLOC(size);
+    wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(size);
 
     for (unsigned int i = 0; i < size; i++) {
         chars[i] = WASMU_NEXT();
@@ -92,7 +92,7 @@ wasmu_String wasmu_readString(wasmu_Module* module) {
 }
 
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
-    wasmu_U8* chars = WASMU_MALLOC(string.size + 1);
+    wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(string.size + 1);
 
     for (wasmu_Count i = 0; i < string.size; i++) {
         chars[i] = string.chars[i];
@@ -103,7 +103,7 @@ wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     return chars;
 }
 
-wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b) {
+wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
 
@@ -124,19 +124,19 @@ wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
     }
 }
 
-wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name) {
+wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name) {
     for (wasmu_Count i = 0; i < module->exportsCount; i++) {
-        wasmu_Export export = module->exports[i];
+        wasmu_Export moduleExport = module->exports[i];
 
-        if (export.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(export.name, name)) {
-            return export.data.asFunctionIndex;
+        if (moduleExport.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(moduleExport.name, name)) {
+            return moduleExport.data.asFunctionIndex;
         }
     }
 
     return -1;
 }
 
-wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name) {
+wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name) {
     wasmu_Int functionIndex = wasmu_getExportedFunctionIndex(module, name);
 
     if (functionIndex == -1) {

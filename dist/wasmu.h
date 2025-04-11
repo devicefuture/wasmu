@@ -70,18 +70,18 @@ typedef WASMU_F32 wasmu_Float;
 #define WASMU_AVAILABLE() (module->position < module->codeSize)
 
 #define WASMU_INIT_ENTRIES(entriesPtr, countPtr) do { \
-        entriesPtr = WASMU_MALLOC(0); \
+        entriesPtr = (__typeof__(entriesPtr))WASMU_MALLOC(0); \
         countPtr = 0; \
     } while (0)
 
 #define WASMU_ADD_ENTRY(entriesPtr, countPtr, entry) do { \
-        entriesPtr = WASMU_REALLOC(entriesPtr, sizeof((entriesPtr)[0]) * (++(countPtr))); \
+        entriesPtr = (__typeof__(entriesPtr))WASMU_REALLOC(entriesPtr, sizeof((entriesPtr)[0]) * (++(countPtr))); \
         entriesPtr[(countPtr) - 1] = entry; \
     } while (0)
 
 #define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : WASMU_NULL)
 
-wasmu_Bool wasmu_charsEqual(wasmu_U8* a, wasmu_U8* b) {
+wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     wasmu_Count i = 0;
 
     while (WASMU_TRUE) {
@@ -454,10 +454,10 @@ wasmu_UInt wasmu_readUInt(wasmu_Module* module);
 wasmu_Int wasmu_readInt(wasmu_Module* module);
 wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
-wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b);
+wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b);
 wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type);
-wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name);
-wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name);
+wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name);
+wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
@@ -479,16 +479,16 @@ wasmu_Context* wasmu_newContext() {
     wasmu_Context* context = WASMU_NEW(wasmu_Context);
 
     context->errorState = WASMU_ERROR_STATE_NONE;
-    context->callStack.calls = WASMU_MALLOC(0);
+    context->callStack.calls = (wasmu_Call*)WASMU_MALLOC(0);
     context->callStack.size = 0;
     context->callStack.count = 0;
-    context->labelStack.labels = WASMU_MALLOC(0);
+    context->labelStack.labels = (wasmu_Label*)WASMU_MALLOC(0);
     context->labelStack.size = 0;
     context->labelStack.count = 0;
-    context->typeStack.types = WASMU_MALLOC(0);
+    context->typeStack.types = (wasmu_ValueType*)WASMU_MALLOC(0);
     context->typeStack.size = 0;
     context->typeStack.count = 0;
-    context->valueStack.data = WASMU_MALLOC(0);
+    context->valueStack.data = (wasmu_U8*)WASMU_MALLOC(0);
     context->valueStack.size = 0;
     context->valueStack.position = 0;
     context->activeModule = WASMU_NULL;
@@ -497,7 +497,7 @@ wasmu_Context* wasmu_newContext() {
     context->activeFunctionSignature = WASMU_NULL;
     context->currentTypeStackBase = 0;
     context->currentValueStackBase = 0;
-    context->currentStackLocals = WASMU_MALLOC(0);
+    context->currentStackLocals = (wasmu_StackLocal*)WASMU_MALLOC(0);
     context->currentStackLocalsCount = 0;
     context->fastForward = WASMU_FALSE;
     context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;
@@ -595,7 +595,7 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
 
 wasmu_String wasmu_readString(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
-    wasmu_U8* chars = WASMU_MALLOC(size);
+    wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(size);
 
     for (unsigned int i = 0; i < size; i++) {
         chars[i] = WASMU_NEXT();
@@ -608,7 +608,7 @@ wasmu_String wasmu_readString(wasmu_Module* module) {
 }
 
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
-    wasmu_U8* chars = WASMU_MALLOC(string.size + 1);
+    wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(string.size + 1);
 
     for (wasmu_Count i = 0; i < string.size; i++) {
         chars[i] = string.chars[i];
@@ -619,7 +619,7 @@ wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     return chars;
 }
 
-wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, wasmu_U8* b) {
+wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
 
@@ -640,19 +640,19 @@ wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
     }
 }
 
-wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, wasmu_U8* name) {
+wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name) {
     for (wasmu_Count i = 0; i < module->exportsCount; i++) {
-        wasmu_Export export = module->exports[i];
+        wasmu_Export moduleExport = module->exports[i];
 
-        if (export.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(export.name, name)) {
-            return export.data.asFunctionIndex;
+        if (moduleExport.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(moduleExport.name, name)) {
+            return moduleExport.data.asFunctionIndex;
         }
     }
 
     return -1;
 }
 
-wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, wasmu_U8* name) {
+wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name) {
     wasmu_Int functionIndex = wasmu_getExportedFunctionIndex(module, name);
 
     if (functionIndex == -1) {
@@ -712,7 +712,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_Count parametersCount = wasmu_readUInt(module);
 
                 for (wasmu_Count j = 0; j < parametersCount; j++) {
-                    wasmu_ValueType parameterType = WASMU_NEXT();
+                    wasmu_ValueType parameterType = (wasmu_ValueType)WASMU_NEXT();
 
                     signature.parametersStackSize += wasmu_getValueTypeSize(parameterType);
 
@@ -722,7 +722,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_Count resultsCount = wasmu_readUInt(module);
                 
                 for (wasmu_Count j = 0; j < resultsCount; j++) {
-                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, WASMU_NEXT());
+                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, (wasmu_ValueType)WASMU_NEXT());
                 }
 
                 WASMU_ADD_ENTRY(module->functionSignatures, module->functionSignaturesCount, signature);
@@ -771,22 +771,22 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     wasmu_Count exportsCount = wasmu_readUInt(module);
 
     for (wasmu_Count i = 0; i < exportsCount; i++) {
-        wasmu_Export export;
+        wasmu_Export moduleExport;
 
-        export.name = wasmu_readString(module);
-        export.type = WASMU_NEXT();
+        moduleExport.name = wasmu_readString(module);
+        moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        switch (export.type) {
+        switch (moduleExport.type) {
             case WASMU_EXPORT_TYPE_FUNCTION:
             {
                 WASMU_DEBUG_LOG("Export type: function");
 
-                export.data.asFunctionIndex = wasmu_readUInt(module);
+                moduleExport.data.asFunctionIndex = wasmu_readUInt(module);
 
                 #ifdef WASMU_DEBUG
-                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(export.name);
+                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
 
-                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, export.data.asFunctionIndex);
+                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, moduleExport.data.asFunctionIndex);
 
                     WASMU_FREE(nameChars);
                 #endif
@@ -800,8 +800,10 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
                 return WASMU_FALSE;
         }
 
-        WASMU_ADD_ENTRY(module->exports, module->exportsCount, export);
+        WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
     }
+
+    return WASMU_TRUE;
 }
 
 wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
@@ -829,7 +831,7 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
         for (wasmu_Count j = 0; j < localDeclarationsCount; j++) {
             wasmu_Count typeLocalsCount = wasmu_readUInt(module);
-            wasmu_ValueType type = WASMU_NEXT();
+            wasmu_ValueType type = (wasmu_ValueType)WASMU_NEXT();
 
             WASMU_DEBUG_LOG("Add local declaration - type 0x%02x, count %d", type, typeLocalsCount);
 
@@ -931,7 +933,7 @@ wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode) {
 
     if (stack->count > stack->size) {
         stack->size = stack->count;
-        stack->labels = WASMU_REALLOC(stack->labels, stack->size * sizeof(wasmu_Label));
+        stack->labels = (wasmu_Label*)WASMU_REALLOC(stack->labels, stack->size * sizeof(wasmu_Label));
     }
 
     stack->labels[stack->count - 1] = (wasmu_Label) {
@@ -1015,7 +1017,7 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
         context->activeFunction = WASMU_GET_ENTRY(module->functions, module->functionsCount, call.functionIndex);
         context->activeFunctionSignature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, context->activeFunction->signatureIndex);
 
-        context->currentStackLocals = WASMU_REALLOC(context->currentStackLocals, 0);
+        context->currentStackLocals = (wasmu_StackLocal*)WASMU_REALLOC(context->currentStackLocals, 0);
         context->currentStackLocalsCount = 0;
 
         wasmu_Count currentPosition = call.valueStackBase;
@@ -1081,7 +1083,7 @@ void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
 
     if (stack->count > stack->size) {
         stack->size = stack->count;
-        stack->calls = WASMU_REALLOC(stack->calls, stack->size * sizeof(wasmu_Call));
+        stack->calls = (wasmu_Call*)WASMU_REALLOC(stack->calls, stack->size * sizeof(wasmu_Call));
     }
 
     stack->calls[stack->count - 1] = call;
@@ -1125,7 +1127,7 @@ void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type) {
 
     if (stack->count > stack->size) {
         stack->size = stack->count;
-        stack->types = WASMU_REALLOC(stack->types, stack->size * sizeof(wasmu_ValueType));
+        stack->types = (wasmu_ValueType*)WASMU_REALLOC(stack->types, stack->size * sizeof(wasmu_ValueType));
     }
 
     stack->types[stack->count - 1] = type;
@@ -1150,7 +1152,7 @@ wasmu_ValueType wasmu_popType(wasmu_Context* context) {
 void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
     if (newPosition > stack->size) {
         stack->size = newPosition;
-        stack->data = WASMU_REALLOC(stack->data, stack->size);
+        stack->data = (wasmu_U8*)WASMU_REALLOC(stack->data, stack->size);
     }
 }
 
@@ -1450,7 +1452,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             WASMU_DEBUG_LOG("Block/loop");
 
-            wasmu_pushLabel(context, opcode);
+            wasmu_pushLabel(context, (wasmu_Opcode)opcode);
 
             break;
         }

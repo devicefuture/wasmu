@@ -23,18 +23,18 @@ typedef WASMU_F32 wasmu_Float;
 #define WASMU_AVAILABLE() (module->position < module->codeSize)
 
 #define WASMU_INIT_ENTRIES(entriesPtr, countPtr) do { \
-        entriesPtr = WASMU_MALLOC(0); \
+        entriesPtr = (__typeof__(entriesPtr))WASMU_MALLOC(0); \
         countPtr = 0; \
     } while (0)
 
 #define WASMU_ADD_ENTRY(entriesPtr, countPtr, entry) do { \
-        entriesPtr = WASMU_REALLOC(entriesPtr, sizeof((entriesPtr)[0]) * (++(countPtr))); \
+        entriesPtr = (__typeof__(entriesPtr))WASMU_REALLOC(entriesPtr, sizeof((entriesPtr)[0]) * (++(countPtr))); \
         entriesPtr[(countPtr) - 1] = entry; \
     } while (0)
 
 #define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : WASMU_NULL)
 
-wasmu_Bool wasmu_charsEqual(wasmu_U8* a, wasmu_U8* b) {
+wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     wasmu_Count i = 0;
 
     while (WASMU_TRUE) {

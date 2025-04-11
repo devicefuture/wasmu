@@ -4,16 +4,16 @@ wasmu_Context* wasmu_newContext() {
     wasmu_Context* context = WASMU_NEW(wasmu_Context);
 
     context->errorState = WASMU_ERROR_STATE_NONE;
-    context->callStack.calls = WASMU_MALLOC(0);
+    context->callStack.calls = (wasmu_Call*)WASMU_MALLOC(0);
     context->callStack.size = 0;
     context->callStack.count = 0;
-    context->labelStack.labels = WASMU_MALLOC(0);
+    context->labelStack.labels = (wasmu_Label*)WASMU_MALLOC(0);
     context->labelStack.size = 0;
     context->labelStack.count = 0;
-    context->typeStack.types = WASMU_MALLOC(0);
+    context->typeStack.types = (wasmu_ValueType*)WASMU_MALLOC(0);
     context->typeStack.size = 0;
     context->typeStack.count = 0;
-    context->valueStack.data = WASMU_MALLOC(0);
+    context->valueStack.data = (wasmu_U8*)WASMU_MALLOC(0);
     context->valueStack.size = 0;
     context->valueStack.position = 0;
     context->activeModule = WASMU_NULL;
@@ -22,7 +22,7 @@ wasmu_Context* wasmu_newContext() {
     context->activeFunctionSignature = WASMU_NULL;
     context->currentTypeStackBase = 0;
     context->currentValueStackBase = 0;
-    context->currentStackLocals = WASMU_MALLOC(0);
+    context->currentStackLocals = (wasmu_StackLocal*)WASMU_MALLOC(0);
     context->currentStackLocalsCount = 0;
     context->fastForward = WASMU_FALSE;
     context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;

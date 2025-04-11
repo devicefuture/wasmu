@@ -5,7 +5,13 @@
         "*.tcc": "c",
         "string": "c",
         "istream": "c",
-        "streambuf": "c"
+        "streambuf": "c",
+        "compare": "cpp",
+        "functional": "cpp",
+        "ranges": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp"
     },
     "search.exclude": {
         "**/dist": true

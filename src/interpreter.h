@@ -23,7 +23,7 @@ wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode) {
 
     if (stack->count > stack->size) {
         stack->size = stack->count;
-        stack->labels = WASMU_REALLOC(stack->labels, stack->size * sizeof(wasmu_Label));
+        stack->labels = (wasmu_Label*)WASMU_REALLOC(stack->labels, stack->size * sizeof(wasmu_Label));
     }
 
     stack->labels[stack->count - 1] = (wasmu_Label) {
@@ -107,7 +107,7 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
         context->activeFunction = WASMU_GET_ENTRY(module->functions, module->functionsCount, call.functionIndex);
         context->activeFunctionSignature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, context->activeFunction->signatureIndex);
 
-        context->currentStackLocals = WASMU_REALLOC(context->currentStackLocals, 0);
+        context->currentStackLocals = (wasmu_StackLocal*)WASMU_REALLOC(context->currentStackLocals, 0);
         context->currentStackLocalsCount = 0;
 
         wasmu_Count currentPosition = call.valueStackBase;
@@ -173,7 +173,7 @@ void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
 
     if (stack->count > stack->size) {
         stack->size = stack->count;
-        stack->calls = WASMU_REALLOC(stack->calls, stack->size * sizeof(wasmu_Call));
+        stack->calls = (wasmu_Call*)WASMU_REALLOC(stack->calls, stack->size * sizeof(wasmu_Call));
     }
 
     stack->calls[stack->count - 1] = call;
@@ -217,7 +217,7 @@ void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type) {
 
     if (stack->count > stack->size) {
         stack->size = stack->count;
-        stack->types = WASMU_REALLOC(stack->types, stack->size * sizeof(wasmu_ValueType));
+        stack->types = (wasmu_ValueType*)WASMU_REALLOC(stack->types, stack->size * sizeof(wasmu_ValueType));
     }
 
     stack->types[stack->count - 1] = type;
@@ -242,7 +242,7 @@ wasmu_ValueType wasmu_popType(wasmu_Context* context) {
 void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
     if (newPosition > stack->size) {
         stack->size = newPosition;
-        stack->data = WASMU_REALLOC(stack->data, stack->size);
+        stack->data = (wasmu_U8*)WASMU_REALLOC(stack->data, stack->size);
     }
 }
 
@@ -542,7 +542,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             WASMU_DEBUG_LOG("Block/loop");
 
-            wasmu_pushLabel(context, opcode);
+            wasmu_pushLabel(context, (wasmu_Opcode)opcode);
 
             break;
         }
