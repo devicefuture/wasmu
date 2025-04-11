@@ -597,18 +597,14 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             module->position = label.position;
 
-            wasmu_Count position;
-
             if (label.opcode == WASMU_OP_LOOP) {
                 // No need to fast forward since we're looping back to start
                 break;
             }
 
-            if (!wasmu_fastForward(context, WASMU_OP_END, &position)) {
+            if (!wasmu_fastForward(context, WASMU_OP_END, WASMU_NULL)) {
                 return WASMU_FALSE;
             }
-
-            module->position = position;
 
             break;
         }
