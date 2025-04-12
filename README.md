@@ -10,6 +10,7 @@ The name _wasmu_ is a play on words — _wasm_ is an initialism for _WebAssembly
     * **Low memory footprint** — wasmu only needs to allocate a few tables and stacks alongside your WebAsesmbly code buffer
     * **Architecture-independent** — works on a wide range of CPU architectures
 * **Embeddable** — single-header file that doesn't need `stdio` or `stdlib` to get working
+    * **Written in C**, can also be embedded in C++ projects
 * **Customisable** to fit your specific needs
     * **Define native modules** that can be called from WebAssembly code
 * **Designed for microcontrollers**, but works on conventional computers and other platforms
