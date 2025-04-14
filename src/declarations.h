@@ -67,6 +67,9 @@ typedef struct wasmu_Label {
     wasmu_Opcode opcode;
     wasmu_Count callIndex;
     wasmu_Count position;
+    wasmu_Count resultsCount;
+    wasmu_Count typeStackBase;
+    wasmu_Count valueStackBase;
 } wasmu_Label;
 
 typedef struct wasmu_LabelStack {

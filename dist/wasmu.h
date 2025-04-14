@@ -349,6 +349,9 @@ typedef struct wasmu_Label {
     wasmu_Opcode opcode;
     wasmu_Count callIndex;
     wasmu_Count position;
+    wasmu_Count resultsCount;
+    wasmu_Count typeStackBase;
+    wasmu_Count valueStackBase;
 } wasmu_Label;
 
 typedef struct wasmu_LabelStack {
@@ -922,7 +925,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
 #define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
 #define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
 
-wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode) {
+wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Count resultsCount) {
     wasmu_LabelStack* stack = &context->labelStack;
 
     if (context->callStack.count == 0) {
@@ -939,7 +942,10 @@ wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode) {
     stack->labels[stack->count - 1] = (wasmu_Label) {
         .opcode = opcode,
         .callIndex = context->callStack.count - 1,
-        .position = context->activeModule->position
+        .position = context->activeModule->position,
+        .resultsCount = resultsCount,
+        .typeStackBase = context->typeStack.count,
+        .valueStackBase = context->valueStack.position
     };
 
     return WASMU_TRUE;
@@ -1211,6 +1217,8 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
     wasmu_Function* function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 
     if (!function) {
+        WASMU_DEBUG_LOG("Unknown function");
+        context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
         return WASMU_FALSE;
     }
 
@@ -1223,6 +1231,12 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
 
     wasmu_Count valueStackBase = context->valueStack.position;
     wasmu_FunctionSignature* signature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, function->signatureIndex);
+
+    if (!signature) {
+        WASMU_DEBUG_LOG("Unknown function signature");
+        context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+        return WASMU_FALSE;
+    }
 
     WASMU_DEBUG_LOG("Decrease stack base by %d for %d parameters", signature->parametersStackSize, signature->parametersCount);
 
@@ -1443,16 +1457,35 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_BLOCK:
         case WASMU_OP_LOOP:
         {
-            wasmu_U8 blockType = WASMU_NEXT();
+            wasmu_U8 blockType = WASMU_READ(module->position);
+            wasmu_Count resultsCount = 0;
+
+            if (blockType == 0x40) {
+                // Shorthand for void result type
+                WASMU_NEXT();
+            } else if (blockType >= 0x7C && blockType <= 0x7F) {
+                // Shorthand for single-value result types
+                resultsCount = 1;
+                WASMU_NEXT();
+            } else {
+                wasmu_Count signatureIndex = wasmu_readUInt(module);
+                wasmu_FunctionSignature* signature = WASMU_GET_ENTRY(module->functionSignatures, module->functionSignaturesCount, signatureIndex);
+
+                if (!signature) {
+                    WASMU_DEBUG_LOG("Unknown function signature");
+                    context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                    return WASMU_FALSE;
+                }
+
+                resultsCount += signature->resultsCount;
+            }
 
             WASMU_FF_STEP_IN();
             WASMU_FF_SKIP_HERE();
 
-            // TODO: Count number of results to return so stack can be cleaned when leaving block
-
             WASMU_DEBUG_LOG("Block/loop");
 
-            wasmu_pushLabel(context, (wasmu_Opcode)opcode);
+            wasmu_pushLabel(context, (wasmu_Opcode)opcode, resultsCount);
 
             break;
         }
@@ -1506,6 +1539,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Checking label from position 0x%08x", label.position);
 
             module->position = label.position;
+
+            // TODO: Use results count to clean type and value stacks for removal of non-result values
 
             if (label.opcode == WASMU_OP_LOOP) {
                 // No need to fast forward since we're looping back to start
