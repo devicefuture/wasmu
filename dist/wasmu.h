@@ -350,6 +350,7 @@ typedef struct wasmu_Label {
     wasmu_Count callIndex;
     wasmu_Count position;
     wasmu_Count resultsCount;
+    wasmu_Count resultsSize;
     wasmu_Count typeStackBase;
     wasmu_Count valueStackBase;
 } wasmu_Label;
@@ -428,6 +429,7 @@ typedef struct wasmu_FunctionSignature {
     wasmu_Count parametersStackSize;
     wasmu_ValueType* results;
     wasmu_Count resultsCount;
+    wasmu_Count resultsStackSize;
 } wasmu_FunctionSignature;
 
 typedef struct wasmu_Function {
@@ -708,6 +710,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_FunctionSignature signature;
 
                 signature.parametersStackSize = 0;
+                signature.resultsStackSize = 0;
 
                 WASMU_INIT_ENTRIES(signature.parameters, signature.parametersCount);
                 WASMU_INIT_ENTRIES(signature.results, signature.resultsCount);
@@ -725,7 +728,11 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_Count resultsCount = wasmu_readUInt(module);
                 
                 for (wasmu_Count j = 0; j < resultsCount; j++) {
-                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, (wasmu_ValueType)WASMU_NEXT());
+                    wasmu_ValueType resultType = (wasmu_ValueType)WASMU_NEXT();
+
+                    signature.resultsStackSize += wasmu_getValueTypeSize(resultType);
+
+                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, resultType);
                 }
 
                 WASMU_ADD_ENTRY(module->functionSignatures, module->functionSignaturesCount, signature);
@@ -925,7 +932,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
 #define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
 #define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
 
-wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Count resultsCount) {
+wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Count resultsCount, wasmu_Count resultsSize) {
     wasmu_LabelStack* stack = &context->labelStack;
 
     if (context->callStack.count == 0) {
@@ -944,6 +951,7 @@ wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Co
         .callIndex = context->callStack.count - 1,
         .position = context->activeModule->position,
         .resultsCount = resultsCount,
+        .resultsSize = resultsSize,
         .typeStackBase = context->typeStack.count,
         .valueStackBase = context->valueStack.position
     };
@@ -1333,13 +1341,11 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
 
     // Then if there are non-result values, remove them from the stack to clean it, shifting the results up
 
-    if (resultsOffset > 0) {
-        for (wasmu_Count i = 0; i < resultsOffset; i++) {
-            stack->data[base + i] = stack->data[base + resultsOffset + i];
-        }
-
-        stack->position -= resultsOffset;
+    for (wasmu_Count i = 0; i < resultsOffset; i++) {
+        stack->data[base + i] = stack->data[base + resultsOffset + i];
     }
+
+    stack->position -= resultsOffset;
 
     // Finally, restore type stack base and re-add result types to type stack
 
@@ -1459,6 +1465,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             wasmu_U8 blockType = WASMU_READ(module->position);
             wasmu_Count resultsCount = 0;
+            wasmu_Count resultsSize = 0;
 
             if (blockType == 0x40) {
                 // Shorthand for void result type
@@ -1466,6 +1473,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             } else if (blockType >= 0x7C && blockType <= 0x7F) {
                 // Shorthand for single-value result types
                 resultsCount = 1;
+                resultsSize = wasmu_getValueTypeSize((wasmu_ValueType)blockType);
                 WASMU_NEXT();
             } else {
                 wasmu_Count signatureIndex = wasmu_readUInt(module);
@@ -1477,15 +1485,16 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                     return WASMU_FALSE;
                 }
 
-                resultsCount += signature->resultsCount;
+                resultsCount = signature->resultsCount;
+                resultsSize = signature->resultsStackSize;
             }
 
             WASMU_FF_STEP_IN();
             WASMU_FF_SKIP_HERE();
 
-            WASMU_DEBUG_LOG("Block/loop");
+            WASMU_DEBUG_LOG("Block/loop - resultsCount: %d, resultsSize: %d", resultsCount, resultsSize);
 
-            wasmu_pushLabel(context, (wasmu_Opcode)opcode, resultsCount);
+            wasmu_pushLabel(context, (wasmu_Opcode)opcode, resultsCount, resultsSize);
 
             break;
         }
@@ -1512,6 +1521,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_BR:
         case WASMU_OP_BR_IF:
         {
+            // Get the current label and decide whether to branch
+
             wasmu_Count labelIndex = wasmu_readUInt(module);
 
             WASMU_FF_SKIP_HERE();
@@ -1536,11 +1547,40 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 }
             }
 
+            // Clean the stack to remove non-result values from the type and value stacks
+
+            wasmu_Int nonResultsCount = context->typeStack.count - label.typeStackBase - label.resultsCount;
+            wasmu_Int nonResultsSize = context->valueStack.position - label.valueStackBase - label.resultsSize;
+
+            WASMU_DEBUG_LOG("Clean up stack - nonResultsCount: %d, nonResultsSize: %d", nonResultsCount, nonResultsSize);
+
+            if (nonResultsCount < 0 || nonResultsSize < 0) {
+                WASMU_DEBUG_LOG(nonResultsCount < 0 ? "Type stack overflow" : "Value stack underflow");
+                context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+                return WASMU_FALSE;
+            }
+
+            // Clean the type stack first by shifting results up
+
+            for (wasmu_Count i = 0; i < nonResultsCount; i++) {
+                context->typeStack.types[label.typeStackBase + i] = context->typeStack.types[label.typeStackBase + nonResultsCount + i];
+            }
+
+            context->typeStack.count = label.typeStackBase + label.resultsCount;
+
+            // Do the same for the value stack
+
+            for (wasmu_Count i = 0; i < nonResultsSize; i++) {
+                context->valueStack.data[label.valueStackBase + i] = context->valueStack.data[label.valueStackBase + nonResultsSize + i];
+            }
+
+            context->valueStack.position = label.valueStackBase + label.resultsSize;
+
+            // Finally, jump to the position specified in the label
+
             WASMU_DEBUG_LOG("Checking label from position 0x%08x", label.position);
 
             module->position = label.position;
-
-            // TODO: Use results count to clean type and value stacks for removal of non-result values
 
             if (label.opcode == WASMU_OP_LOOP) {
                 // No need to fast forward since we're looping back to start
@@ -1684,6 +1724,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Add I32 - a: %d, b: %d (result: %d)", a, b, a + b);
 
             wasmu_pushInt(context, 4, a + b);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
 
             break;
         }
@@ -1698,6 +1739,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Sub I32 - a: %d, b: %d (result: %d)", a, b, a - b);
 
             wasmu_pushInt(context, 4, a - b);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
 
             break;
         }

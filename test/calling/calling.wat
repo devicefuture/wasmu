@@ -1,6 +1,6 @@
 (module
     (func $addThree (export "addThree") (param i32 i32 i32) (result i32)
-        local.get 0 ;; Add unused value to stack to test cleaning the value stack when returning
+        local.get 0 ;; Add unused, excess value to stack to test cleaning the value stack when returning
         local.get 0
         local.get 1
         i32.add

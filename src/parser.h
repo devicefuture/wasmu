@@ -39,6 +39,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_FunctionSignature signature;
 
                 signature.parametersStackSize = 0;
+                signature.resultsStackSize = 0;
 
                 WASMU_INIT_ENTRIES(signature.parameters, signature.parametersCount);
                 WASMU_INIT_ENTRIES(signature.results, signature.resultsCount);
@@ -56,7 +57,11 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
                 wasmu_Count resultsCount = wasmu_readUInt(module);
                 
                 for (wasmu_Count j = 0; j < resultsCount; j++) {
-                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, (wasmu_ValueType)WASMU_NEXT());
+                    wasmu_ValueType resultType = (wasmu_ValueType)WASMU_NEXT();
+
+                    signature.resultsStackSize += wasmu_getValueTypeSize(resultType);
+
+                    WASMU_ADD_ENTRY(signature.results, signature.resultsCount, resultType);
                 }
 
                 WASMU_ADD_ENTRY(module->functionSignatures, module->functionSignaturesCount, signature);

@@ -68,6 +68,7 @@ typedef struct wasmu_Label {
     wasmu_Count callIndex;
     wasmu_Count position;
     wasmu_Count resultsCount;
+    wasmu_Count resultsSize;
     wasmu_Count typeStackBase;
     wasmu_Count valueStackBase;
 } wasmu_Label;
@@ -146,6 +147,7 @@ typedef struct wasmu_FunctionSignature {
     wasmu_Count parametersStackSize;
     wasmu_ValueType* results;
     wasmu_Count resultsCount;
+    wasmu_Count resultsStackSize;
 } wasmu_FunctionSignature;
 
 typedef struct wasmu_Function {
