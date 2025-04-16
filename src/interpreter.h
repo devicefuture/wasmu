@@ -821,6 +821,41 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_GLOBAL_GET:
+        {
+            wasmu_Count globalIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_TypedValue* global = WASMU_GET_ENTRY(module->globals, module->globalsCount, globalIndex);
+            wasmu_Count size = wasmu_getValueTypeSize(global->type);
+            wasmu_Int value = global->value.asInt;
+
+            WASMU_DEBUG_LOG("Get global - index: %d (type: %d, size: %d, value: %d)", globalIndex, global->type, size, value);
+
+            wasmu_pushInt(context, size, value);
+            wasmu_pushType(context, global->type);
+
+            break;
+        }
+
+        case WASMU_OP_GLOBAL_SET:
+        {
+            wasmu_Count globalIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_TypedValue* global = WASMU_GET_ENTRY(module->globals, module->globalsCount, globalIndex);
+            wasmu_Count size = wasmu_getValueTypeSize(global->type);
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(global->type);
+
+            WASMU_DEBUG_LOG("Set global - index: %d (type: %d, size: %d, value: %d)", globalIndex, global->type, size, value);
+
+            global->value.asInt = value;
+
+            break;
+        }
+
         case WASMU_OP_I32_CONST:
         {
             wasmu_I32 value = wasmu_readInt(module);

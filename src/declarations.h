@@ -32,8 +32,7 @@ typedef enum {
     WASMU_SECTION_START = 8,
     WASMU_SECTION_ELEMENT = 9,
     WASMU_SECTION_CODE = 10,
-    WASMU_SECTION_DATA = 11,
-    WASMU_SETCION_DATA_COUNT = 12
+    WASMU_SECTION_DATA = 11
 } wasmu_SectionType;
 
 typedef enum wasmu_SignatureType {
@@ -48,6 +47,14 @@ typedef struct wasmu_String {
     wasmu_Count size;
     wasmu_U8* chars;
 } wasmu_String;
+
+typedef struct wasmu_TypedValue {
+    wasmu_ValueType type;
+    union {
+        wasmu_Int asInt;
+        wasmu_Float asFloat;
+    } value;
+} wasmu_TypedValue;
 
 typedef struct wasmu_Call {
     wasmu_Count moduleIndex;
@@ -130,6 +137,8 @@ typedef struct wasmu_Module {
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
+    wasmu_TypedValue* globals;
+    wasmu_Count globalsCount;
     struct wasmu_Export* exports;
     wasmu_Count exportsCount;
     wasmu_Count nextFunctionIndexForCode;

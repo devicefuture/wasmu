@@ -105,6 +105,38 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseGlobalSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count globalsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < globalsCount; i++) {
+        wasmu_TypedValue global;
+
+        global.type = (wasmu_ValueType)WASMU_NEXT();
+
+        WASMU_NEXT(); // Mutability — not required for now; just assume everything is mutable
+        WASMU_NEXT(); // Const opcode — also not required until global importing is implemented
+
+        switch (global.type) {
+            case WASMU_VALUE_TYPE_I32:
+                global.value.asInt = wasmu_readInt(module);
+                WASMU_DEBUG_LOG("Add global - type: %d, value: %d", global.type, global.value.asInt);
+                break;
+
+            default:
+                WASMU_DEBUG_LOG("Global value type not implemented");
+                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
+                return WASMU_FALSE;
+        }
+
+        WASMU_NEXT(); // End opcode
+
+        WASMU_ADD_ENTRY(module->globals, module->globalsCount, global);
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count exportsCount = wasmu_readUInt(module);
@@ -221,6 +253,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_FUNCTION:
                 WASMU_DEBUG_LOG("Section: function");
                 if (!wasmu_parseFunctionSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_GLOBAL:
+                WASMU_DEBUG_LOG("Section: global");
+                if (!wasmu_parseGlobalSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_EXPORT:

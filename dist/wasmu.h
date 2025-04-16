@@ -314,8 +314,7 @@ typedef enum {
     WASMU_SECTION_START = 8,
     WASMU_SECTION_ELEMENT = 9,
     WASMU_SECTION_CODE = 10,
-    WASMU_SECTION_DATA = 11,
-    WASMU_SETCION_DATA_COUNT = 12
+    WASMU_SECTION_DATA = 11
 } wasmu_SectionType;
 
 typedef enum wasmu_SignatureType {
@@ -330,6 +329,14 @@ typedef struct wasmu_String {
     wasmu_Count size;
     wasmu_U8* chars;
 } wasmu_String;
+
+typedef struct wasmu_TypedValue {
+    wasmu_ValueType type;
+    union {
+        wasmu_Int asInt;
+        wasmu_Float asFloat;
+    } value;
+} wasmu_TypedValue;
 
 typedef struct wasmu_Call {
     wasmu_Count moduleIndex;
@@ -412,6 +419,8 @@ typedef struct wasmu_Module {
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
+    wasmu_TypedValue* globals;
+    wasmu_Count globalsCount;
     struct wasmu_Export* exports;
     wasmu_Count exportsCount;
     wasmu_Count nextFunctionIndexForCode;
@@ -531,6 +540,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     WASMU_INIT_ENTRIES(module->customSections, module->customSectionsCount);
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);
+    WASMU_INIT_ENTRIES(module->globals, module->globalsCount);
     WASMU_INIT_ENTRIES(module->exports, module->exportsCount);
 
     WASMU_ADD_ENTRY(context->modules, context->modulesCount, module);
@@ -776,6 +786,38 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseGlobalSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count globalsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < globalsCount; i++) {
+        wasmu_TypedValue global;
+
+        global.type = (wasmu_ValueType)WASMU_NEXT();
+
+        WASMU_NEXT(); // Mutability — not required for now; just assume everything is mutable
+        WASMU_NEXT(); // Const opcode — also not required until global importing is implemented
+
+        switch (global.type) {
+            case WASMU_VALUE_TYPE_I32:
+                global.value.asInt = wasmu_readInt(module);
+                WASMU_DEBUG_LOG("Add global - type: %d, value: %d", global.type, global.value.asInt);
+                break;
+
+            default:
+                WASMU_DEBUG_LOG("Global value type not implemented");
+                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
+                return WASMU_FALSE;
+        }
+
+        WASMU_NEXT(); // End opcode
+
+        WASMU_ADD_ENTRY(module->globals, module->globalsCount, global);
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count exportsCount = wasmu_readUInt(module);
@@ -892,6 +934,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_FUNCTION:
                 WASMU_DEBUG_LOG("Section: function");
                 if (!wasmu_parseFunctionSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_GLOBAL:
+                WASMU_DEBUG_LOG("Section: global");
+                if (!wasmu_parseGlobalSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_EXPORT:
@@ -1737,6 +1784,41 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 wasmu_pushInt(context, local->size, value);
                 wasmu_pushType(context, local->valueType);
             }
+
+            break;
+        }
+
+        case WASMU_OP_GLOBAL_GET:
+        {
+            wasmu_Count globalIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_TypedValue* global = WASMU_GET_ENTRY(module->globals, module->globalsCount, globalIndex);
+            wasmu_Count size = wasmu_getValueTypeSize(global->type);
+            wasmu_Int value = global->value.asInt;
+
+            WASMU_DEBUG_LOG("Get global - index: %d (type: %d, size: %d, value: %d)", globalIndex, global->type, size, value);
+
+            wasmu_pushInt(context, size, value);
+            wasmu_pushType(context, global->type);
+
+            break;
+        }
+
+        case WASMU_OP_GLOBAL_SET:
+        {
+            wasmu_Count globalIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_TypedValue* global = WASMU_GET_ENTRY(module->globals, module->globalsCount, globalIndex);
+            wasmu_Count size = wasmu_getValueTypeSize(global->type);
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(global->type);
+
+            WASMU_DEBUG_LOG("Set global - index: %d (type: %d, size: %d, value: %d)", globalIndex, global->type, size, value);
+
+            global->value.asInt = value;
 
             break;
         }
