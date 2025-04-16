@@ -472,7 +472,7 @@ void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value);
 wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes);
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);
 wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function);
-wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult);
+wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail);
 wasmu_Bool wasmu_step(wasmu_Context* context);
 wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function);
 
@@ -1368,7 +1368,7 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
     }
 }
 
-wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult) {
+wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail) {
     WASMU_DEBUG_LOG("Begin fast forward - targetOpcode: 0x%02x", targetOpcode);
 
     context->fastForward = WASMU_TRUE;
@@ -1377,6 +1377,11 @@ wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, 
 
     while (context->fastForward) {
         if (!wasmu_step(context)) {
+            if (!errorOnSearchFail && context->errorState == WASMU_ERROR_STATE_STACK_UNDERFLOW) {
+                // Opcode not found, so ignore error
+                context->errorState = WASMU_ERROR_STATE_NONE;
+            }
+
             context->fastForward = WASMU_FALSE;
 
             return WASMU_FALSE;
@@ -1462,6 +1467,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_BLOCK:
         case WASMU_OP_LOOP:
+        case WASMU_OP_IF:
         {
             wasmu_U8 blockType = WASMU_READ(module->position);
             wasmu_Count resultsCount = 0;
@@ -1492,11 +1498,46 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_FF_STEP_IN();
             WASMU_FF_SKIP_HERE();
 
-            WASMU_DEBUG_LOG("Block/loop - resultsCount: %d, resultsSize: %d", resultsCount, resultsSize);
+            WASMU_DEBUG_LOG("Block/loop/if - resultsCount: %d, resultsSize: %d", resultsCount, resultsSize);
 
             wasmu_pushLabel(context, (wasmu_Opcode)opcode, resultsCount, resultsSize);
 
+            if (opcode == WASMU_OP_IF) {
+                wasmu_Int condition = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+                WASMU_DEBUG_LOG("If - condition: %d", condition);
+
+                if (!condition) {
+                    wasmu_Count originalPosition = module->position;
+
+                    if (wasmu_fastForward(context, WASMU_OP_ELSE, WASMU_NULL, WASMU_FALSE)) {
+                        // Jump to code after `else` but don't actually execute `else` opcode
+                        WASMU_DEBUG_LOG("Jump to else");
+                        WASMU_NEXT();
+
+                        break;
+                    }
+
+                    WASMU_DEBUG_LOG("Jump to end");
+
+                    module->position = originalPosition;
+
+                    if (!wasmu_fastForward(context, WASMU_OP_END, WASMU_NULL, WASMU_TRUE)) {
+                        return WASMU_FALSE;
+                    }
+                }
+            }
+
             break;
+        }
+
+        case WASMU_OP_ELSE:
+        {
+            WASMU_DEBUG_LOG("Else");
+
+            if (!wasmu_fastForward(context, WASMU_OP_END, WASMU_NULL, WASMU_TRUE)) {
+                return WASMU_FALSE;
+            }
         }
 
         case WASMU_OP_END:
@@ -1587,7 +1628,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 break;
             }
 
-            if (!wasmu_fastForward(context, WASMU_OP_END, WASMU_NULL)) {
+            if (!wasmu_fastForward(context, WASMU_OP_END, WASMU_NULL, WASMU_TRUE)) {
                 return WASMU_FALSE;
             }
 

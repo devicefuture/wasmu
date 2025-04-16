@@ -73,4 +73,46 @@
         i32.add
         i32.add
     )
+    (func (export "ifTrue") (result i32) (local $result i32)
+        i32.const 1
+        (if
+            (then
+                i32.const 2
+                local.set $result
+            )
+        )
+        local.get $result
+    )
+    (func (export "ifFalse") (result i32) (local $result i32)
+        i32.const 0
+        (if
+            (then
+                i32.const 2
+                local.set $result
+            )
+        )
+        local.get $result
+    )
+    (func (export "ifElseTrue") (result i32)
+        i32.const 1
+        (if (result i32)
+            (then
+                i32.const 2
+            )
+            (else
+                i32.const 3
+            )
+        )
+    )
+    (func (export "ifElseFalse") (result i32)
+        i32.const 0
+        (if (result i32)
+            (then
+                i32.const 2
+            )
+            (else
+                i32.const 3
+            )
+        )
+    )
 )
