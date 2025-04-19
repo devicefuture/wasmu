@@ -1852,6 +1852,21 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_I32_NE:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_I32 b = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_I32 a = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            WASMU_DEBUG_LOG("Not equal I32 - a: %d, b: %d (result: %d)", a, b, a != b);
+
+            wasmu_pushInt(context, 4, a != b);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+            break;
+        }
+
         case WASMU_OP_I32_ADD:
         {
             WASMU_FF_SKIP_HERE();
