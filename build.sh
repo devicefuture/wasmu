@@ -31,6 +31,7 @@ include src/declarations.h
 include src/contexts.h
 include src/modules.h
 include src/parser.h
+include src/memory.h
 include src/interpreter.h
 
 tee -a dist/wasmu.h > /dev/null << EOF

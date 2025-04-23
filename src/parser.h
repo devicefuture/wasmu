@@ -281,6 +281,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_MEMORY:
                 WASMU_DEBUG_LOG("Section: memory");
                 if (!wasmu_parseMemorySection(module)) {return WASMU_FALSE;}
+                break;
 
             case WASMU_SECTION_GLOBAL:
                 WASMU_DEBUG_LOG("Section: global");

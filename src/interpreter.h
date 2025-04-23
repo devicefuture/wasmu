@@ -856,6 +856,69 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_I32_LOAD:
+        {
+            wasmu_UInt alignment = wasmu_readUInt(module);
+            wasmu_UInt offset = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
+
+            if (!memory) {
+                WASMU_DEBUG_LOG("No memory is defined");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_UInt index = offset + wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_UInt value = 0;
+
+            WASMU_DEBUG_LOG("Load I32 - alignment: %d, offset: 0x%08x (index: 0x%08x)", alignment, offset, index);
+
+            if (!wasmu_memoryLoad(memory, index, 4, &value)) {
+                WASMU_DEBUG_LOG("Unable to load from memory");
+                context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
+                return WASMU_FALSE;
+            }
+
+            WASMU_DEBUG_LOG("Loaded value: %d", value);
+
+            wasmu_pushInt(context, 4, value);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+            break;
+        }
+
+        case WASMU_OP_I32_STORE:
+        {
+            wasmu_UInt alignment = wasmu_readUInt(module);
+            wasmu_UInt offset = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
+
+            if (!memory) {
+                WASMU_DEBUG_LOG("No memory is defined");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_UInt value = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_UInt index = offset + wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            WASMU_DEBUG_LOG("Store I32 - alignment: %d, offset: 0x%08x, value: %d (index: 0x%08x)", alignment, offset, value, index);
+
+            if (!wasmu_memoryStore(memory, index, 4, value)) {
+                WASMU_DEBUG_LOG("Unable to store to memory");
+                context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
+                return WASMU_FALSE;
+            }
+
+            break;
+        }
+
         case WASMU_OP_I32_CONST:
         {
             wasmu_I32 value = wasmu_readInt(module);

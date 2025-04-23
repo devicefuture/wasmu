@@ -977,6 +977,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_MEMORY:
                 WASMU_DEBUG_LOG("Section: memory");
                 if (!wasmu_parseMemorySection(module)) {return WASMU_FALSE;}
+                break;
 
             case WASMU_SECTION_GLOBAL:
                 WASMU_DEBUG_LOG("Section: global");
@@ -1003,6 +1004,48 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
     }
 
     return WASMU_TRUE;
+}
+
+// src/memory.h
+
+#define WASMU_MEMORY_PAGE_SIZE 65536
+
+#define WASMU_MEMORY_ALIGN_BLOCK(value) (((value) + WASMU_MEMORY_BLOCK_SIZE - 1) & ~(WASMU_MEMORY_BLOCK_SIZE - 1))
+
+wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value) {
+    *value = 0;
+
+    for (wasmu_Count i = 0; i < byteCount; i++) {
+        if (index >= memory->size) {
+            return WASMU_TRUE;
+        }
+
+        *value |= memory->data[index++] << (i * 8);
+    }
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value) {
+    for (wasmu_Count i = 0; i < byteCount; i++) {
+        if (index >= memory->size) {
+            wasmu_Count newPagesCount = index / WASMU_MEMORY_PAGE_SIZE;
+
+            if (newPagesCount > memory->maxPages) {
+                return WASMU_FALSE;
+            }
+
+            memory->pagesCount = newPagesCount;
+
+            memory->size = WASMU_MEMORY_ALIGN_BLOCK(index);
+            memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size);
+
+            WASMU_DEBUG_LOG("Increase memory size to %d", memory->size);
+        }
+
+        memory->data[index++] = value & 0xFF;
+        value >>= 8;
+    }
 }
 
 // src/interpreter.h
@@ -1861,6 +1904,69 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Set global - index: %d (type: %d, size: %d, value: %d)", globalIndex, global->type, size, value);
 
             global->value.asInt = value;
+
+            break;
+        }
+
+        case WASMU_OP_I32_LOAD:
+        {
+            wasmu_UInt alignment = wasmu_readUInt(module);
+            wasmu_UInt offset = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
+
+            if (!memory) {
+                WASMU_DEBUG_LOG("No memory is defined");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_UInt index = offset + wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_UInt value = 0;
+
+            WASMU_DEBUG_LOG("Load I32 - alignment: %d, offset: 0x%08x (index: 0x%08x)", alignment, offset, index);
+
+            if (!wasmu_memoryLoad(memory, index, 4, &value)) {
+                WASMU_DEBUG_LOG("Unable to load from memory");
+                context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
+                return WASMU_FALSE;
+            }
+
+            WASMU_DEBUG_LOG("Loaded value: %d", value);
+
+            wasmu_pushInt(context, 4, value);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+            break;
+        }
+
+        case WASMU_OP_I32_STORE:
+        {
+            wasmu_UInt alignment = wasmu_readUInt(module);
+            wasmu_UInt offset = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
+
+            if (!memory) {
+                WASMU_DEBUG_LOG("No memory is defined");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_UInt value = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_UInt index = offset + wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            WASMU_DEBUG_LOG("Store I32 - alignment: %d, offset: 0x%08x, value: %d (index: 0x%08x)", alignment, offset, value, index);
+
+            if (!wasmu_memoryStore(memory, index, 4, value)) {
+                WASMU_DEBUG_LOG("Unable to store to memory");
+                context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
+                return WASMU_FALSE;
+            }
 
             break;
         }
