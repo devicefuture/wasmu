@@ -137,6 +137,8 @@ typedef struct wasmu_Module {
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
+    struct wasmu_Memory* memories;
+    wasmu_Count memoriesCount;
     wasmu_TypedValue* globals;
     wasmu_Count globalsCount;
     struct wasmu_Export* exports;
@@ -166,6 +168,14 @@ typedef struct wasmu_Function {
     wasmu_ValueType* locals;
     wasmu_Count localsCount;
 } wasmu_Function;
+
+typedef struct wasmu_Memory {
+    wasmu_U8* data;
+    wasmu_Count size;
+    wasmu_Count pagesCount;
+    wasmu_Count minPages;
+    wasmu_Count maxPages;
+} wasmu_Memory;
 
 typedef struct wasmu_Export {
     wasmu_String name;

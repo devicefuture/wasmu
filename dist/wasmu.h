@@ -43,6 +43,10 @@
 
 #endif
 
+#ifndef WASMU_MEMORY_BLOCK_SIZE
+#define WASMU_MEMORY_BLOCK_SIZE 1024
+#endif
+
 // src/common.h
 
 typedef WASMU_BOOL wasmu_Bool;
@@ -419,6 +423,8 @@ typedef struct wasmu_Module {
     wasmu_Count functionSignaturesCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
+    struct wasmu_Memory* memories;
+    wasmu_Count memoriesCount;
     wasmu_TypedValue* globals;
     wasmu_Count globalsCount;
     struct wasmu_Export* exports;
@@ -448,6 +454,14 @@ typedef struct wasmu_Function {
     wasmu_ValueType* locals;
     wasmu_Count localsCount;
 } wasmu_Function;
+
+typedef struct wasmu_Memory {
+    wasmu_U8* data;
+    wasmu_Count size;
+    wasmu_Count pagesCount;
+    wasmu_Count minPages;
+    wasmu_Count maxPages;
+} wasmu_Memory;
 
 typedef struct wasmu_Export {
     wasmu_String name;
@@ -540,6 +554,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     WASMU_INIT_ENTRIES(module->customSections, module->customSectionsCount);
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);
+    WASMU_INIT_ENTRIES(module->memories, module->memoriesCount);
     WASMU_INIT_ENTRIES(module->globals, module->globalsCount);
     WASMU_INIT_ENTRIES(module->exports, module->exportsCount);
 
@@ -786,6 +801,29 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count memoriesCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < memoriesCount; i++) {
+        wasmu_Memory memory;
+
+        memory.data = (wasmu_U8*)WASMU_MALLOC(0);
+        memory.size = 0;
+
+        wasmu_U8 limitsFlag = WASMU_NEXT();
+
+        memory.pagesCount = memory.minPages = wasmu_readUInt(module);
+        memory.maxPages = limitsFlag == 0x01 ? wasmu_readUInt(module) : -1;
+
+        WASMU_ADD_ENTRY(module->memories, module->memoriesCount, memory);
+
+        WASMU_DEBUG_LOG("Add memory - minPages: %d, maxPages: %d", memory.minPages, memory.maxPages);
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseGlobalSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count globalsCount = wasmu_readUInt(module);
@@ -935,6 +973,10 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
                 WASMU_DEBUG_LOG("Section: function");
                 if (!wasmu_parseFunctionSection(module)) {return WASMU_FALSE;}
                 break;
+
+            case WASMU_SECTION_MEMORY:
+                WASMU_DEBUG_LOG("Section: memory");
+                if (!wasmu_parseMemorySection(module)) {return WASMU_FALSE;}
 
             case WASMU_SECTION_GLOBAL:
                 WASMU_DEBUG_LOG("Section: global");

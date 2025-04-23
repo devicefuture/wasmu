@@ -37,3 +37,7 @@
 #endif
 
 #endif
+
+#ifndef WASMU_MEMORY_BLOCK_SIZE
+#define WASMU_MEMORY_BLOCK_SIZE 1024
+#endif
