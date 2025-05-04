@@ -14,6 +14,9 @@
 #define WASMU_U32 uint32_t
 #define WASMU_I32 int32_t
 #define WASMU_F32 float
+#define WASMU_U64 uint64_t
+#define WASMU_I64 int64_t
+#define WASMU_F64 double
 
 #endif
 

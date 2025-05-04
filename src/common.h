@@ -7,10 +7,13 @@ typedef WASMU_I16 wasmu_I16;
 typedef WASMU_U32 wasmu_U32;
 typedef WASMU_I32 wasmu_I32;
 typedef WASMU_F32 wasmu_F32;
+typedef WASMU_U64 wasmu_U64;
+typedef WASMU_I64 wasmu_I64;
+typedef WASMU_F64 wasmu_F64;
 
-typedef WASMU_U32 wasmu_UInt;
-typedef WASMU_I32 wasmu_Int;
-typedef WASMU_F32 wasmu_Float;
+typedef WASMU_U64 wasmu_UInt;
+typedef WASMU_I64 wasmu_Int;
+typedef WASMU_F64 wasmu_Float;
 
 #define WASMU_TRUE 1
 #define WASMU_FALSE 0

@@ -11,7 +11,9 @@ typedef enum {
 
 typedef enum {
     WASMU_VALUE_TYPE_I32 = 0x7F,
-    WASMU_VALUE_TYPE_F32 = 0x7D
+    WASMU_VALUE_TYPE_I64 = 0x7E,
+    WASMU_VALUE_TYPE_F32 = 0x7D,
+    WASMU_VALUE_TYPE_F64 = 0x7C
 } wasmu_ValueType;
 
 typedef enum {
