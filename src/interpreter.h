@@ -520,6 +520,24 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_I32_EQZ:
+        case WASMU_OP_I64_EQZ:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+
+            WASMU_DEBUG_LOG("Equal to zero - value: %ld (result: %ld)", value, value == 0);
+
+            wasmu_pushInt(context, size, value == 0);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
         case WASMU_OP_I32_EQ:
         case WASMU_OP_I64_EQ:
             WASMU_OPERATOR(wasmu_Int, ==)
@@ -536,6 +554,111 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F64_NE:
             WASMU_OPERATOR(wasmu_Float, !=)
 
+        case WASMU_OP_I32_LT_S:
+        case WASMU_OP_I64_LT_S:
+            WASMU_OPERATOR(wasmu_Int, <)
+
+        case WASMU_OP_I32_LT_U:
+        case WASMU_OP_I64_LT_U:
+            WASMU_OPERATOR(wasmu_UInt, <)
+
+        case WASMU_OP_F32_LT:
+        case WASMU_OP_F64_LT:
+            WASMU_OPERATOR(wasmu_Float, <)
+
+        case WASMU_OP_I32_GT_S:
+        case WASMU_OP_I64_GT_S:
+            WASMU_OPERATOR(wasmu_Int, >)
+
+        case WASMU_OP_I32_GT_U:
+        case WASMU_OP_I64_GT_U:
+            WASMU_OPERATOR(wasmu_UInt, >)
+
+        case WASMU_OP_F32_GT:
+        case WASMU_OP_F64_GT:
+            WASMU_OPERATOR(wasmu_Float, >)
+
+        case WASMU_OP_I32_LE_S:
+        case WASMU_OP_I64_LE_S:
+            WASMU_OPERATOR(wasmu_Int, <=)
+
+        case WASMU_OP_I32_LE_U:
+        case WASMU_OP_I64_LE_U:
+            WASMU_OPERATOR(wasmu_UInt, <=)
+
+        case WASMU_OP_F32_LE:
+        case WASMU_OP_F64_LE:
+            WASMU_OPERATOR(wasmu_Float, <=)
+
+        case WASMU_OP_I32_GE_S:
+        case WASMU_OP_I64_GE_S:
+            WASMU_OPERATOR(wasmu_Int, >=)
+
+        case WASMU_OP_I32_GE_U:
+        case WASMU_OP_I64_GE_U:
+            WASMU_OPERATOR(wasmu_UInt, >=)
+
+        case WASMU_OP_F32_GE:
+        case WASMU_OP_F64_GE:
+            WASMU_OPERATOR(wasmu_Float, >=)
+
+        case WASMU_OP_I32_CLZ:
+        case WASMU_OP_I64_CLZ:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Count result = wasmu_countLeadingZeros(value, size);
+
+            WASMU_DEBUG_LOG("Count leading zeros - value: %ld (result: %ld)", value, result);
+
+            wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_I32_CTZ:
+        case WASMU_OP_I64_CTZ:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Count result = wasmu_countTrailingZeros(value, size);
+
+            WASMU_DEBUG_LOG("Count trailing zeros - value: %ld (result: %ld)", value, result);
+
+            wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_I32_POPCNT:
+        case WASMU_OP_I64_POPCNT:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Count result = wasmu_countOnes(value, size);
+
+            WASMU_DEBUG_LOG("Count ones - value: %ld (result: %ld)", value, result);
+
+            wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
         case WASMU_OP_I32_ADD:
         case WASMU_OP_I64_ADD:
             WASMU_OPERATOR(wasmu_Int, +)
@@ -551,6 +674,98 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F32_SUB:
         case WASMU_OP_F64_SUB:
             WASMU_OPERATOR(wasmu_Float, -)
+
+        case WASMU_OP_I32_MUL:
+        case WASMU_OP_I64_MUL:
+            WASMU_OPERATOR(wasmu_Int, *)
+
+        case WASMU_OP_F32_MUL:
+        case WASMU_OP_F64_MUL:
+            WASMU_OPERATOR(wasmu_Float, *)
+
+        case WASMU_OP_I32_DIV_S:
+        case WASMU_OP_I64_DIV_S:
+            WASMU_OPERATOR(wasmu_Int, /)
+
+        case WASMU_OP_I32_DIV_U:
+        case WASMU_OP_I64_DIV_U:
+            WASMU_OPERATOR(wasmu_UInt, /)
+
+        case WASMU_OP_F32_DIV:
+        case WASMU_OP_F64_DIV:
+            WASMU_OPERATOR(wasmu_Float, /)
+
+        case WASMU_OP_I32_REM_S:
+        case WASMU_OP_I64_REM_S:
+            WASMU_OPERATOR(wasmu_Int, %)
+
+        case WASMU_OP_I32_REM_U:
+        case WASMU_OP_I64_REM_U:
+            WASMU_OPERATOR(wasmu_UInt, %)
+
+        case WASMU_OP_I32_AND:
+        case WASMU_OP_I64_AND:
+            WASMU_OPERATOR(wasmu_Int, &)
+
+        case WASMU_OP_I32_OR:
+        case WASMU_OP_I64_OR:
+            WASMU_OPERATOR(wasmu_Int, |)
+
+        case WASMU_OP_I32_XOR:
+        case WASMU_OP_I64_XOR:
+            WASMU_OPERATOR(wasmu_Int, ^)
+
+        case WASMU_OP_I32_SHL:
+        case WASMU_OP_I64_SHL:
+            WASMU_OPERATOR(wasmu_Int, <<)
+
+        case WASMU_OP_I32_SHR_S:
+        case WASMU_OP_I64_SHR_S:
+            WASMU_OPERATOR(wasmu_Int, >>)
+
+        case WASMU_OP_I32_SHR_U:
+        case WASMU_OP_I64_SHR_U:
+            WASMU_OPERATOR(wasmu_UInt, >>)
+
+        case WASMU_OP_I32_ROTL:
+        case WASMU_OP_I64_ROTL:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_Int shift = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Count result = wasmu_rotateLeft(value, size, shift);
+
+            WASMU_DEBUG_LOG("Rotate left - value: %ld, shift: %ld (result: %ld)", value, shift, result);
+
+            wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_I32_ROTR:
+        case WASMU_OP_I64_ROTR:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+
+            wasmu_Int shift = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_Count result = wasmu_rotateRight(value, size, shift);
+
+            WASMU_DEBUG_LOG("Rotate right - value: %ld, shift: %ld (result: %ld)", value, shift, result);
+
+            wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
 
         default:
             WASMU_DEBUG_LOG("Opcode not implemented");

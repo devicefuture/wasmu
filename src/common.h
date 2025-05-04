@@ -56,3 +56,85 @@ wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
         i++;
     }
 }
+
+wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
+    wasmu_Count totalBits = size * 8;
+    wasmu_Count bitsChecked = 0;
+    wasmu_Count bitsAfter = 0;
+
+    while (value > 0xFF) {
+        value >>= 8;
+        bitsChecked += 8;
+        bitsAfter += 8;
+    }
+
+    while (bitsChecked < totalBits) {
+        bitsChecked++;
+
+        if (value & 1) {
+            bitsAfter = bitsChecked;
+        }
+
+        value >>= 1;
+    }
+
+    return bitsChecked - bitsAfter;
+}
+
+wasmu_Count wasmu_countTrailingZeros(wasmu_UInt value, wasmu_Count size) {
+    wasmu_Count bits = 0;
+
+    while (value & 0xFF == 0) {
+        value >>= 8;
+        bits += 8;
+    }
+
+    while (value & 1 == 0) {
+        value >>= 1;
+        bits++;
+    }
+
+    if (bits > size * 8) {
+        return size * 8;
+    }
+
+    return bits;
+}
+
+wasmu_Count wasmu_countOnes(wasmu_UInt value, wasmu_Count size) {
+    wasmu_Count bits = 0;
+
+    while (value) {
+        if (value & 1) {
+            bits++;
+        }
+
+        value >>= 1;
+    }
+
+    if (bits > size * 8) {
+        return size * 8;
+    }
+
+    return bits;
+}
+
+// @source reference https://en.wikipedia.org/wiki/Circular_shift
+// @licence ccbysa4
+wasmu_UInt wasmu_rotateLeft(wasmu_UInt value, wasmu_Count size, wasmu_Count shift) {
+    if ((shift &= (size * 8) - 1) == 0) {
+        return value;
+    }
+
+    return (value << shift) | (value >> ((size * 8) - shift));
+}
+
+// @source reference https://en.wikipedia.org/wiki/Circular_shift
+// @licence ccbysa4
+wasmu_UInt wasmu_rotateRight(wasmu_UInt value, wasmu_Count size, wasmu_Count shift) {
+    if ((shift &= (size * 8) - 1) == 0) {
+        return value;
+    }
+
+    return (value >> shift) | (value << ((size * 8) - shift));
+}
