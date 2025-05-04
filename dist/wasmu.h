@@ -493,6 +493,7 @@ void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
 wasmu_ValueType wasmu_popType(wasmu_Context* context);
 void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value);
 wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes);
+
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);
 wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function);
 wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail);
@@ -1048,7 +1049,7 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
     }
 }
 
-// src/interpreter.h
+// src/stacks.h
 
 #define WASMU_ASSERT_POP_TYPE(type) do { \
     wasmu_ValueType poppedType = wasmu_popType(context); \
@@ -1059,10 +1060,6 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
         return WASMU_FALSE; \
     } \
 } while (0)
-
-#define WASMU_FF_SKIP_HERE() if (context->fastForward) {break;}
-#define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
-#define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
 
 wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Count resultsCount, wasmu_Count resultsSize) {
     wasmu_LabelStack* stack = &context->labelStack;
@@ -1345,6 +1342,12 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
 
     return wasmu_stackGetInt(context, stack->position, bytes);
 }
+
+// src/interpreter.h
+
+#define WASMU_FF_SKIP_HERE() if (context->fastForward) {break;}
+#define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
+#define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
 
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
     wasmu_Module** modulePtr = WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
