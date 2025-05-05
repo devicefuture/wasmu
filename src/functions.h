@@ -59,6 +59,12 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
         }
     }
 
+    if (function->nativeFunction) {
+        WASMU_DEBUG_LOG("Call native function");
+
+        return function->nativeFunction(context);
+    }
+
     if (context->callStack.count > 0) {
         // Save current position on current topmost call
         context->callStack.calls[context->callStack.count - 1].position = callingModule->position;

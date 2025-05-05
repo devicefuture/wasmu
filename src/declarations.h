@@ -179,11 +179,14 @@ typedef struct wasmu_Import {
     } data;
 } wasmu_Import;
 
+typedef wasmu_Bool (*wasmu_NativeFunction)(wasmu_Context* context);
+
 typedef struct wasmu_Function {
     wasmu_Count signatureIndex;
     wasmu_Count importIndex;
     wasmu_Count codePosition;
     wasmu_Count codeSize;
+    wasmu_NativeFunction nativeFunction;
     wasmu_ValueType* locals;
     wasmu_Count localsCount;
 } wasmu_Function;
@@ -219,6 +222,8 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b);
 wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type);
 wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name);
 wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name);
+wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module);
+wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 

@@ -102,6 +102,7 @@ wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
 
                 function.signatureIndex = wasmu_readUInt(module);
                 function.importIndex = module->importsCount;
+                function.nativeFunction = WASMU_NULL;
 
                 WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
@@ -142,6 +143,7 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
 
         function.signatureIndex = wasmu_readUInt(module);
         function.importIndex = -1;
+        function.nativeFunction = WASMU_NULL;
         function.codePosition = 0;
         function.codeSize = 0;
 

@@ -588,11 +588,14 @@ typedef struct wasmu_Import {
     } data;
 } wasmu_Import;
 
+typedef wasmu_Bool (*wasmu_NativeFunction)(wasmu_Context* context);
+
 typedef struct wasmu_Function {
     wasmu_Count signatureIndex;
     wasmu_Count importIndex;
     wasmu_Count codePosition;
     wasmu_Count codeSize;
+    wasmu_NativeFunction nativeFunction;
     wasmu_ValueType* locals;
     wasmu_Count localsCount;
 } wasmu_Function;
@@ -628,6 +631,8 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b);
 wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type);
 wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name);
 wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name);
+wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module);
+wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
@@ -966,6 +971,20 @@ wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     return chars;
 }
 
+wasmu_String wasmu_charsToString(const wasmu_U8* chars) {
+    wasmu_U8* copy = wasmu_copyChars(chars);
+    wasmu_Count size = 0;
+
+    while (chars[size]) {
+        size++;
+    }
+
+    return (wasmu_String) {
+        .size = size,
+        .chars = copy
+    };
+}
+
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
@@ -1079,6 +1098,25 @@ wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
     }
 }
 
+wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction) {
+    wasmu_Function function;
+
+    function.importIndex = -1;
+    function.nativeFunction = nativeFunction;
+
+    WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
+
+    wasmu_Export moduleExport;
+
+    moduleExport.name = wasmu_charsToString(name);
+    moduleExport.type = WASMU_EXPORT_TYPE_FUNCTION;
+    moduleExport.data.asFunctionIndex = module->functionsCount - 1;
+
+    WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
+
+    return WASMU_TRUE;
+}
+
 // src/parser.h
 
 wasmu_Bool wasmu_parseCustomSection(wasmu_Module* module) {
@@ -1185,6 +1223,7 @@ wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
 
                 function.signatureIndex = wasmu_readUInt(module);
                 function.importIndex = module->importsCount;
+                function.nativeFunction = WASMU_NULL;
 
                 WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
@@ -1225,6 +1264,7 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
 
         function.signatureIndex = wasmu_readUInt(module);
         function.importIndex = -1;
+        function.nativeFunction = WASMU_NULL;
         function.codePosition = 0;
         function.codeSize = 0;
 
@@ -1857,6 +1897,12 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
             context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
             return WASMU_FALSE;
         }
+    }
+
+    if (function->nativeFunction) {
+        WASMU_DEBUG_LOG("Call native function");
+
+        return function->nativeFunction(context);
     }
 
     if (context->callStack.count > 0) {

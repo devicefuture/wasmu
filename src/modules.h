@@ -111,6 +111,20 @@ wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     return chars;
 }
 
+wasmu_String wasmu_charsToString(const wasmu_U8* chars) {
+    wasmu_U8* copy = wasmu_copyChars(chars);
+    wasmu_Count size = 0;
+
+    while (chars[size]) {
+        size++;
+    }
+
+    return (wasmu_String) {
+        .size = size,
+        .chars = copy
+    };
+}
+
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
@@ -222,4 +236,23 @@ wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
 
         WASMU_FREE(targetModuleName);
     }
+}
+
+wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction) {
+    wasmu_Function function;
+
+    function.importIndex = -1;
+    function.nativeFunction = nativeFunction;
+
+    WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
+
+    wasmu_Export moduleExport;
+
+    moduleExport.name = wasmu_charsToString(name);
+    moduleExport.type = WASMU_EXPORT_TYPE_FUNCTION;
+    moduleExport.data.asFunctionIndex = module->functionsCount - 1;
+
+    WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
+
+    return WASMU_TRUE;
 }
