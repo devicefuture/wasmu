@@ -84,7 +84,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
     wasmu_U8 opcode = WASMU_NEXT();
 
     if (context->errorState == WASMU_ERROR_STATE_MEMORY_OOB) {
-        WASMU_DEBUG_LOG("No more opcodes to execute");
+        WASMU_DEBUG_LOG("No more opcodes to execute - position: 0x%08x", module->position);
         return WASMU_FALSE;
     }
 

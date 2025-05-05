@@ -50,6 +50,10 @@
 #define WASMU_MEMORY_BLOCK_SIZE 1024
 #endif
 
+#ifndef WASMU_IMPORT_RESOLUTION_DEPTH
+#define WASMU_IMPORT_RESOLUTION_DEPTH 16
+#endif
+
 // src/common.h
 
 typedef WASMU_BOOL wasmu_Bool;
@@ -109,6 +113,37 @@ wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
 
         i++;
     }
+}
+
+wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
+    if (!source) {
+        return WASMU_NULL;
+    }
+
+    wasmu_U8* copy = WASMU_MALLOC(1);
+
+    if (!copy) {
+        return WASMU_NULL;
+    }
+
+    copy[0] = '\0';
+
+    wasmu_Count i = 0;
+
+    while (*source) {
+        copy[i++] = *source;
+        copy = WASMU_REALLOC(copy, i + 1);
+
+        if (!copy) {
+            return WASMU_NULL;
+        }
+
+        copy[i] = '\0';
+
+        source++;
+    }
+
+    return copy;
 }
 
 wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
@@ -380,7 +415,10 @@ typedef enum {
     WASMU_ERROR_STATE_STACK_UNDERFLOW,
     WASMU_ERROR_STATE_TYPE_MISMATCH,
     WASMU_ERROR_STATE_REACHED_UNREACHABLE,
-    WASMU_ERROR_STATE_INVALID_INDEX
+    WASMU_ERROR_STATE_INVALID_INDEX,
+    WASMU_ERROR_STATE_PRECONDITION_FAILED,
+    WASMU_ERROR_STATE_DEPTH_EXCEEDED,
+    WASMU_ERROR_STATE_IMPORT_NOT_FOUND
 } wasmu_ErrorState;
 
 typedef enum {
@@ -504,6 +542,7 @@ typedef struct wasmu_Context {
 
 typedef struct wasmu_Module {
     wasmu_Context* context;
+    wasmu_U8* name;
     wasmu_U8* code;
     wasmu_Count codeSize;
     wasmu_Count position;
@@ -511,6 +550,8 @@ typedef struct wasmu_Module {
     wasmu_Count customSectionsCount;
     struct wasmu_FunctionSignature* functionSignatures;
     wasmu_Count functionSignaturesCount;
+    struct wasmu_Import* imports;
+    wasmu_Count importsCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
     struct wasmu_Memory* memories;
@@ -537,8 +578,19 @@ typedef struct wasmu_FunctionSignature {
     wasmu_Count resultsStackSize;
 } wasmu_FunctionSignature;
 
+typedef struct wasmu_Import {
+    wasmu_String moduleName;
+    wasmu_String name;
+    wasmu_ExportType type;
+    wasmu_Count resolvedModuleIndex;
+    union {
+        wasmu_Count asFunctionIndex;
+    } data;
+} wasmu_Import;
+
 typedef struct wasmu_Function {
     wasmu_Count signatureIndex;
+    wasmu_Count importIndex;
     wasmu_Count codePosition;
     wasmu_Count codeSize;
     wasmu_ValueType* locals;
@@ -805,6 +857,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     wasmu_Module* module = WASMU_NEW(wasmu_Module);
 
     module->context = context;
+    module->name = WASMU_NULL;
     module->code = WASMU_NULL;
     module->codeSize = 0;
     module->position = 0;
@@ -812,6 +865,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
 
     WASMU_INIT_ENTRIES(module->customSections, module->customSectionsCount);
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
+    WASMU_INIT_ENTRIES(module->imports, module->importsCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);
     WASMU_INIT_ENTRIES(module->memories, module->memoriesCount);
     WASMU_INIT_ENTRIES(module->globals, module->globalsCount);
@@ -828,6 +882,10 @@ void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize) {
     module->code = code;
     module->codeSize = codeSize;
     module->position = 0;
+}
+
+void wasmu_assignModuleName(wasmu_Module* module, const wasmu_U8* name) {
+    module->name = wasmu_copyChars(name);
 }
 
 wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position) {
@@ -942,13 +1000,83 @@ wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* n
 }
 
 wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name) {
-    wasmu_Int functionIndex = wasmu_getExportedFunctionIndex(module, name);
+    wasmu_Count functionIndex = wasmu_getExportedFunctionIndex(module, name);
 
     if (functionIndex == -1) {
         return WASMU_NULL;
     }
 
     return WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+}
+
+wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* resolvedModule) {
+    wasmu_U8* name = wasmu_getNullTerminatedChars(import->name);
+    wasmu_Bool isSuccess = WASMU_FALSE;
+
+    switch (import->type) {
+        case WASMU_EXPORT_TYPE_FUNCTION: {
+            wasmu_Count functionIndex = wasmu_getExportedFunctionIndex(resolvedModule, name);
+
+            if (functionIndex == -1) {
+                WASMU_DEBUG_LOG("Unable to resolve imported function - name: %s", name);
+                resolvedModule->context->errorState = WASMU_ERROR_STATE_IMPORT_NOT_FOUND;
+                goto exit;
+            }
+
+            import->data.asFunctionIndex = functionIndex;
+
+            break;
+        }
+
+        default:
+            WASMU_DEBUG_LOG("Import type not implemented when resolving");
+            resolvedModule->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
+            goto exit;
+    }
+
+    isSuccess = WASMU_TRUE;
+
+    exit:
+
+    WASMU_FREE(name);
+
+    return isSuccess;
+}
+
+wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
+    wasmu_Context* context = module->context;
+
+    for (wasmu_Count i = 0; i < module->importsCount; i++) {
+        wasmu_Import* moduleImport = &module->imports[i];
+
+        if (moduleImport->resolvedModuleIndex != -1) {
+            continue;
+        }
+
+        wasmu_U8* targetModuleName = wasmu_getNullTerminatedChars(moduleImport->moduleName);
+
+        for (wasmu_Count j = 0; j < context->modulesCount; j++) {
+            wasmu_Module* currentModule = context->modules[j];
+
+            if (currentModule->name && wasmu_charsEqual(currentModule->name, targetModuleName)) {
+                if (!wasmu_resolveModuleImportData(moduleImport, currentModule)) {
+                    return WASMU_FALSE;
+                }
+
+                moduleImport->resolvedModuleIndex = j;
+
+                break;
+            }
+        }
+
+        if (moduleImport->resolvedModuleIndex == -1) {
+            WASMU_DEBUG_LOG("Unable to resolve module import - moduleName: %s", targetModuleName);
+            context->errorState = WASMU_ERROR_STATE_IMPORT_NOT_FOUND;
+            return WASMU_FALSE;
+        }
+
+        WASMU_FREE(targetModuleName);
+    }
 }
 
 // src/parser.h
@@ -1036,6 +1164,58 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count importsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < importsCount; i++) {
+        wasmu_Import moduleImport;
+
+        moduleImport.moduleName = wasmu_readString(module);
+        moduleImport.name = wasmu_readString(module);
+        moduleImport.type = (wasmu_ExportType)WASMU_NEXT();
+        moduleImport.resolvedModuleIndex = -1;
+
+        switch (moduleImport.type) {
+            case WASMU_EXPORT_TYPE_FUNCTION:
+            {
+                WASMU_DEBUG_LOG("Import type: function");
+
+                wasmu_Function function;
+
+                function.signatureIndex = wasmu_readUInt(module);
+                function.importIndex = module->importsCount;
+
+                WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
+
+                #ifdef WASMU_DEBUG
+                    wasmu_U8* moduleNameChars = wasmu_getNullTerminatedChars(moduleImport.moduleName);
+                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleImport.name);
+
+                    WASMU_DEBUG_LOG(
+                        "Add function import - moduleName: \"%s\", name: \"%s\", functionIndex: %d, signatureIndex: %d",
+                        moduleNameChars, nameChars, module->functionsCount - 1, function.signatureIndex
+                    );
+
+                    WASMU_FREE(moduleNameChars);
+                    WASMU_FREE(nameChars);
+                #endif
+
+                break;
+            }
+
+            default:
+                WASMU_DEBUG_LOG("Import type not implemented");
+                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
+                return WASMU_FALSE;
+        }
+
+        WASMU_ADD_ENTRY(module->imports, module->importsCount, moduleImport);
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count functionsCount = wasmu_readUInt(module);
@@ -1044,6 +1224,7 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
         wasmu_Function function;
 
         function.signatureIndex = wasmu_readUInt(module);
+        function.importIndex = -1;
         function.codePosition = 0;
         function.codeSize = 0;
 
@@ -1161,15 +1342,24 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
     for (wasmu_Count i = 0; i < bodiesCount; i++) {
         wasmu_Count functionIndex = module->nextFunctionIndexForCode++;
+        wasmu_Function* function = WASMU_NULL;
 
-        wasmu_Function* function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+        while (WASMU_TRUE) {
+            function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 
-        if (!function) {
-            WASMU_DEBUG_LOG("No function exists for code body");
+            if (!function) {
+                WASMU_DEBUG_LOG("No function exists for code body");
 
-            module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
+                module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
 
-            return WASMU_FALSE;
+                return WASMU_FALSE;
+            }
+
+            if (function->importIndex == -1) {
+                break;
+            }
+
+            functionIndex = module->nextFunctionIndexForCode++;
         }
 
         function->codeSize = wasmu_readUInt(module);
@@ -1226,6 +1416,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_TYPE:
                 WASMU_DEBUG_LOG("Section: type");
                 if (!wasmu_parseTypesSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_IMPORT:
+                WASMU_DEBUG_LOG("Section: import");
+                if (!wasmu_parseImportSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_FUNCTION:
@@ -1606,6 +1801,7 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
     wasmu_Module** modulePtr = WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
     wasmu_Module* module = *modulePtr;
+    wasmu_Module* callingModule = module;
 
     if (!module) {
         return WASMU_FALSE;
@@ -1619,9 +1815,53 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
         return WASMU_FALSE;
     }
 
+    wasmu_Count resolutionDepth = 0;
+
+    while (function->importIndex != -1) {
+        if (resolutionDepth >= WASMU_IMPORT_RESOLUTION_DEPTH) {
+            WASMU_DEBUG_LOG("Import resolution depth exceeded");
+            context->errorState = WASMU_ERROR_STATE_DEPTH_EXCEEDED;
+            return WASMU_FALSE;
+        }
+
+        resolutionDepth++;
+
+        wasmu_Import* moduleImport = WASMU_GET_ENTRY(module->imports, module->importsCount, function->importIndex);
+
+        if (!moduleImport || moduleImport->type != WASMU_EXPORT_TYPE_FUNCTION) {
+            WASMU_DEBUG_LOG("Unknown import");
+            context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        if (moduleImport->resolvedModuleIndex == -1) {
+            WASMU_DEBUG_LOG("Import has not yet been resolved");
+            context->errorState = WASMU_ERROR_STATE_PRECONDITION_FAILED;
+            return WASMU_FALSE;
+        }
+
+        moduleIndex = moduleImport->resolvedModuleIndex;
+        module = *WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
+
+        if (!module) {
+            WASMU_DEBUG_LOG("Unknown resolved module");
+            context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        functionIndex = moduleImport->data.asFunctionIndex;
+        function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+
+        if (!function) {
+            WASMU_DEBUG_LOG("Unknown resolved function");
+            context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+    }
+
     if (context->callStack.count > 0) {
         // Save current position on current topmost call
-        context->callStack.calls[context->callStack.count - 1].position = module->position;
+        context->callStack.calls[context->callStack.count - 1].position = callingModule->position;
     }
 
     module->position = function->codePosition;
@@ -1682,6 +1922,8 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     }
 
     if (moduleIndex == -1) {
+        WASMU_DEBUG_LOG("Module does not exist in context");
+        module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
         return WASMU_FALSE;
     }
 
@@ -1693,6 +1935,8 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     }
 
     if (functionIndex == -1) {
+        WASMU_DEBUG_LOG("Function does not exist in module");
+        module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
         return WASMU_FALSE;
     }
 
@@ -1845,7 +2089,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
     wasmu_U8 opcode = WASMU_NEXT();
 
     if (context->errorState == WASMU_ERROR_STATE_MEMORY_OOB) {
-        WASMU_DEBUG_LOG("No more opcodes to execute");
+        WASMU_DEBUG_LOG("No more opcodes to execute - position: 0x%08x", module->position);
         return WASMU_FALSE;
     }
 

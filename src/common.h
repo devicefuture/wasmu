@@ -57,6 +57,37 @@ wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     }
 }
 
+wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
+    if (!source) {
+        return WASMU_NULL;
+    }
+
+    wasmu_U8* copy = WASMU_MALLOC(1);
+
+    if (!copy) {
+        return WASMU_NULL;
+    }
+
+    copy[0] = '\0';
+
+    wasmu_Count i = 0;
+
+    while (*source) {
+        copy[i++] = *source;
+        copy = WASMU_REALLOC(copy, i + 1);
+
+        if (!copy) {
+            return WASMU_NULL;
+        }
+
+        copy[i] = '\0';
+
+        source++;
+    }
+
+    return copy;
+}
+
 wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
     wasmu_Count totalBits = size * 8;
     wasmu_Count bitsChecked = 0;

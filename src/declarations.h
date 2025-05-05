@@ -6,7 +6,10 @@ typedef enum {
     WASMU_ERROR_STATE_STACK_UNDERFLOW,
     WASMU_ERROR_STATE_TYPE_MISMATCH,
     WASMU_ERROR_STATE_REACHED_UNREACHABLE,
-    WASMU_ERROR_STATE_INVALID_INDEX
+    WASMU_ERROR_STATE_INVALID_INDEX,
+    WASMU_ERROR_STATE_PRECONDITION_FAILED,
+    WASMU_ERROR_STATE_DEPTH_EXCEEDED,
+    WASMU_ERROR_STATE_IMPORT_NOT_FOUND
 } wasmu_ErrorState;
 
 typedef enum {
@@ -130,6 +133,7 @@ typedef struct wasmu_Context {
 
 typedef struct wasmu_Module {
     wasmu_Context* context;
+    wasmu_U8* name;
     wasmu_U8* code;
     wasmu_Count codeSize;
     wasmu_Count position;
@@ -137,6 +141,8 @@ typedef struct wasmu_Module {
     wasmu_Count customSectionsCount;
     struct wasmu_FunctionSignature* functionSignatures;
     wasmu_Count functionSignaturesCount;
+    struct wasmu_Import* imports;
+    wasmu_Count importsCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
     struct wasmu_Memory* memories;
@@ -163,8 +169,19 @@ typedef struct wasmu_FunctionSignature {
     wasmu_Count resultsStackSize;
 } wasmu_FunctionSignature;
 
+typedef struct wasmu_Import {
+    wasmu_String moduleName;
+    wasmu_String name;
+    wasmu_ExportType type;
+    wasmu_Count resolvedModuleIndex;
+    union {
+        wasmu_Count asFunctionIndex;
+    } data;
+} wasmu_Import;
+
 typedef struct wasmu_Function {
     wasmu_Count signatureIndex;
+    wasmu_Count importIndex;
     wasmu_Count codePosition;
     wasmu_Count codeSize;
     wasmu_ValueType* locals;

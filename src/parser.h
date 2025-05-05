@@ -81,6 +81,58 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count importsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < importsCount; i++) {
+        wasmu_Import moduleImport;
+
+        moduleImport.moduleName = wasmu_readString(module);
+        moduleImport.name = wasmu_readString(module);
+        moduleImport.type = (wasmu_ExportType)WASMU_NEXT();
+        moduleImport.resolvedModuleIndex = -1;
+
+        switch (moduleImport.type) {
+            case WASMU_EXPORT_TYPE_FUNCTION:
+            {
+                WASMU_DEBUG_LOG("Import type: function");
+
+                wasmu_Function function;
+
+                function.signatureIndex = wasmu_readUInt(module);
+                function.importIndex = module->importsCount;
+
+                WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
+
+                #ifdef WASMU_DEBUG
+                    wasmu_U8* moduleNameChars = wasmu_getNullTerminatedChars(moduleImport.moduleName);
+                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleImport.name);
+
+                    WASMU_DEBUG_LOG(
+                        "Add function import - moduleName: \"%s\", name: \"%s\", functionIndex: %d, signatureIndex: %d",
+                        moduleNameChars, nameChars, module->functionsCount - 1, function.signatureIndex
+                    );
+
+                    WASMU_FREE(moduleNameChars);
+                    WASMU_FREE(nameChars);
+                #endif
+
+                break;
+            }
+
+            default:
+                WASMU_DEBUG_LOG("Import type not implemented");
+                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
+                return WASMU_FALSE;
+        }
+
+        WASMU_ADD_ENTRY(module->imports, module->importsCount, moduleImport);
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count functionsCount = wasmu_readUInt(module);
@@ -89,6 +141,7 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
         wasmu_Function function;
 
         function.signatureIndex = wasmu_readUInt(module);
+        function.importIndex = -1;
         function.codePosition = 0;
         function.codeSize = 0;
 
@@ -206,15 +259,24 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
     for (wasmu_Count i = 0; i < bodiesCount; i++) {
         wasmu_Count functionIndex = module->nextFunctionIndexForCode++;
+        wasmu_Function* function = WASMU_NULL;
 
-        wasmu_Function* function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+        while (WASMU_TRUE) {
+            function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 
-        if (!function) {
-            WASMU_DEBUG_LOG("No function exists for code body");
+            if (!function) {
+                WASMU_DEBUG_LOG("No function exists for code body");
 
-            module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
+                module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
 
-            return WASMU_FALSE;
+                return WASMU_FALSE;
+            }
+
+            if (function->importIndex == -1) {
+                break;
+            }
+
+            functionIndex = module->nextFunctionIndexForCode++;
         }
 
         function->codeSize = wasmu_readUInt(module);
@@ -271,6 +333,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_TYPE:
                 WASMU_DEBUG_LOG("Section: type");
                 if (!wasmu_parseTypesSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_IMPORT:
+                WASMU_DEBUG_LOG("Section: import");
+                if (!wasmu_parseImportSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_FUNCTION:

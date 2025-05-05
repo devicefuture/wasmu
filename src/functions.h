@@ -1,6 +1,7 @@
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
     wasmu_Module** modulePtr = WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
     wasmu_Module* module = *modulePtr;
+    wasmu_Module* callingModule = module;
 
     if (!module) {
         return WASMU_FALSE;
@@ -14,9 +15,53 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
         return WASMU_FALSE;
     }
 
+    wasmu_Count resolutionDepth = 0;
+
+    while (function->importIndex != -1) {
+        if (resolutionDepth >= WASMU_IMPORT_RESOLUTION_DEPTH) {
+            WASMU_DEBUG_LOG("Import resolution depth exceeded");
+            context->errorState = WASMU_ERROR_STATE_DEPTH_EXCEEDED;
+            return WASMU_FALSE;
+        }
+
+        resolutionDepth++;
+
+        wasmu_Import* moduleImport = WASMU_GET_ENTRY(module->imports, module->importsCount, function->importIndex);
+
+        if (!moduleImport || moduleImport->type != WASMU_EXPORT_TYPE_FUNCTION) {
+            WASMU_DEBUG_LOG("Unknown import");
+            context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        if (moduleImport->resolvedModuleIndex == -1) {
+            WASMU_DEBUG_LOG("Import has not yet been resolved");
+            context->errorState = WASMU_ERROR_STATE_PRECONDITION_FAILED;
+            return WASMU_FALSE;
+        }
+
+        moduleIndex = moduleImport->resolvedModuleIndex;
+        module = *WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
+
+        if (!module) {
+            WASMU_DEBUG_LOG("Unknown resolved module");
+            context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        functionIndex = moduleImport->data.asFunctionIndex;
+        function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
+
+        if (!function) {
+            WASMU_DEBUG_LOG("Unknown resolved function");
+            context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+    }
+
     if (context->callStack.count > 0) {
         // Save current position on current topmost call
-        context->callStack.calls[context->callStack.count - 1].position = module->position;
+        context->callStack.calls[context->callStack.count - 1].position = callingModule->position;
     }
 
     module->position = function->codePosition;
@@ -77,6 +122,8 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     }
 
     if (moduleIndex == -1) {
+        WASMU_DEBUG_LOG("Module does not exist in context");
+        module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
         return WASMU_FALSE;
     }
 
@@ -88,6 +135,8 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     }
 
     if (functionIndex == -1) {
+        WASMU_DEBUG_LOG("Function does not exist in module");
+        module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
         return WASMU_FALSE;
     }
 
