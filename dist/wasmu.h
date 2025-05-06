@@ -1300,6 +1300,7 @@ wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
 
         WASMU_ADD_ENTRY(module->tables, module->tablesCount, table);
 
+        WASMU_NEXT(); // Table type — just assume it's a `funcref` for now
         WASMU_NEXT(); // Limits flags — not required for now
         WASMU_NEXT(); // Initial size — also not required; table can grow when needed
 
