@@ -12,6 +12,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     WASMU_INIT_ENTRIES(module->functionSignatures, module->functionSignaturesCount);
     WASMU_INIT_ENTRIES(module->imports, module->importsCount);
     WASMU_INIT_ENTRIES(module->functions, module->functionsCount);
+    WASMU_INIT_ENTRIES(module->tables, module->tablesCount);
     WASMU_INIT_ENTRIES(module->memories, module->memoriesCount);
     WASMU_INIT_ENTRIES(module->globals, module->globalsCount);
     WASMU_INIT_ENTRIES(module->exports, module->exportsCount);

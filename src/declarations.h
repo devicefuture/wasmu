@@ -145,6 +145,8 @@ typedef struct wasmu_Module {
     wasmu_Count importsCount;
     struct wasmu_Function* functions;
     wasmu_Count functionsCount;
+    struct wasmu_Table* tables;
+    wasmu_Count tablesCount;
     struct wasmu_Memory* memories;
     wasmu_Count memoriesCount;
     wasmu_TypedValue* globals;
@@ -190,6 +192,11 @@ typedef struct wasmu_Function {
     wasmu_ValueType* locals;
     wasmu_Count localsCount;
 } wasmu_Function;
+
+typedef struct wasmu_Table {
+    wasmu_Count* entries;
+    wasmu_Count entriesCount;
+} wasmu_Table;
 
 typedef struct wasmu_Memory {
     wasmu_U8* data;

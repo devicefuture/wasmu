@@ -160,6 +160,24 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count tablesCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < tablesCount; i++) {
+        wasmu_Table table;
+
+        WASMU_INIT_ENTRIES(table.entries, table.entriesCount);
+
+        WASMU_ADD_ENTRY(module->tables, module->tablesCount, table);
+
+        WASMU_NEXT(); // Limits flags — not required for now
+        WASMU_NEXT(); // Initial size — also not required; table can grow when needed
+
+        WASMU_DEBUG_LOG("Add table");
+    }
+}
+
 wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count memoriesCount = wasmu_readUInt(module);
@@ -345,6 +363,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_FUNCTION:
                 WASMU_DEBUG_LOG("Section: function");
                 if (!wasmu_parseFunctionSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_TABLE:
+                WASMU_DEBUG_LOG("Section: table");
+                if (!wasmu_parseTableSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_MEMORY:
