@@ -2013,7 +2013,7 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
     // Ensure that results offset also accounts for stack values related to parameters, results and locals
 
     if (nonLocalsSize > 0) {
-        WASMU_DEBUG_LOG("Popping non-locals - size %d", nonLocalsSize);
+        WASMU_DEBUG_LOG("Popping non-locals - size: %d", nonLocalsSize);
 
         resultsOffset += nonLocalsSize;
     }
@@ -2263,16 +2263,40 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_BR:
         case WASMU_OP_BR_IF:
+        case WASMU_OP_BR_TABLE:
         {
             // Get the current label and decide whether to branch
 
-            wasmu_Count labelIndex = wasmu_readUInt(module);
+            wasmu_Count labelIndex;
+
+            if (opcode == WASMU_OP_BR_TABLE) {
+                wasmu_Count targets = wasmu_readUInt(module);
+                wasmu_Count targetIndex = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+                wasmu_Bool foundTarget = WASMU_FALSE;
+
+                for (wasmu_Count i = 0; i < targets; i++) {
+                    wasmu_Count targetLabelIndex = wasmu_readUInt(module);
+
+                    if (i == targetIndex) {
+                        foundTarget = WASMU_TRUE;
+                        labelIndex = targetLabelIndex;
+                    }
+                }
+
+                wasmu_Count defaultLabelIndex = wasmu_readUInt(module);
+
+                if (!foundTarget) {
+                    labelIndex = defaultLabelIndex;
+                }
+            } else {
+                labelIndex = wasmu_readUInt(module);
+            }
 
             WASMU_FF_SKIP_HERE();
 
             wasmu_Label label;
 
-            WASMU_DEBUG_LOG("Break/break if - labelIndex: %d", labelIndex);
+            WASMU_DEBUG_LOG("Branch/branch if/branch table - labelIndex: %d", labelIndex);
 
             if (!wasmu_getLabel(context, labelIndex, context->callStack.count - 1, &label)) {
                 WASMU_DEBUG_LOG("Label stack underflow");
@@ -2283,7 +2307,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             if (opcode == WASMU_OP_BR_IF) {
                 wasmu_Int condition = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
 
-                WASMU_DEBUG_LOG("Break if - condition: %d", condition);
+                WASMU_DEBUG_LOG("Branch if - condition: %d", condition);
 
                 if (!condition) {
                     break;

@@ -115,4 +115,32 @@
             )
         )
     )
+    (func (export "branchTable") (param $mode i32) (param $value i32) (result i32)
+        (block
+            (block
+                (block
+                    (block
+                        local.get $mode
+                        (br_table 0 2 1 3)
+                    )
+                    local.get $value
+                    i32.const 2
+                    i32.add
+                    return
+                )
+                local.get $value
+                i32.const 2
+                i32.sub
+                return
+            )
+            local.get $value
+            i32.const 2
+            i32.mul
+            return
+        )
+        local.get $value
+        i32.const 2
+        i32.div_s
+        return
+    )
 )

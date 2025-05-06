@@ -173,7 +173,7 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
     // Ensure that results offset also accounts for stack values related to parameters, results and locals
 
     if (nonLocalsSize > 0) {
-        WASMU_DEBUG_LOG("Popping non-locals - size %d", nonLocalsSize);
+        WASMU_DEBUG_LOG("Popping non-locals - size: %d", nonLocalsSize);
 
         resultsOffset += nonLocalsSize;
     }

@@ -178,5 +178,34 @@ TEST {
     ASSERT(wasmu_popInt(context, 4) == 3, "Result is not 3");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
 
+    printf("Get function: \"branchTable\"\n");
+
+    wasmu_Function* branchTable = wasmu_getExportedFunction(module, "branchTable");
+
+    ASSERT(branchTable, "Function not found");
+
+    const unsigned int expectedResults[] = {8, 12, 4, 3, 3};
+
+    for (unsigned int i = 0; i < 4; i++) {
+        printf("Call case %d\n", i);
+
+        wasmu_pushInt(context, 4, i); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+        wasmu_pushInt(context, 4, 6); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+        ASSERT(context->valueStack.position == 4 * 2, "Value stack is not at correct position");
+
+        ASSERT(wasmu_runFunction(module, branchTable), "Error encountered while running function");
+
+        ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+        ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+        unsigned int result = wasmu_popInt(context, 4);
+
+        printf("Result: %d\n", result);
+
+        ASSERT(result == expectedResults[i], "Result is not expected value");
+        ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+    }
+
     PASS();
 }
