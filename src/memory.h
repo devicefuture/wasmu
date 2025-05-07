@@ -39,3 +39,55 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
         value >>= 8;
     }
 }
+
+wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {
+    switch (opcode) {
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I32_LOAD8_U:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I64_LOAD8_U:
+        case WASMU_OP_I32_STORE8:
+        case WASMU_OP_I64_STORE8:
+            return 1;
+
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I32_LOAD16_U:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD16_U:
+        case WASMU_OP_I32_STORE16:
+        case WASMU_OP_I64_STORE16:
+            return 2;
+
+        case WASMU_OP_I64_LOAD32_S:
+        case WASMU_OP_I64_LOAD32_U:
+        case WASMU_OP_I64_STORE32:
+            return 4;
+
+        default:
+            return wasmu_getValueTypeSize(wasmu_getOpcodeSubjectType(opcode));
+    }
+}
+
+void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value) {
+    switch (opcode) {
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD32_S:
+            break;
+
+        default: return;
+    }
+
+    wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
+    wasmu_UInt sign = *value >> (dataSize * 8) - 1;
+
+    if (!sign) {
+        return;
+    }
+
+    wasmu_UInt mask = -1;
+
+    *value |= (mask << (dataSize * 8));
+}

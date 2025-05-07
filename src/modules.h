@@ -79,7 +79,7 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
         shift += 7;
     } while ((byte & 0b10000000) != 0);
 
-    if (shift < sizeof(result) / 8 && result & 0b10000000) {
+    if (shift < sizeof(result) * 8 && (byte & 0b01000000) != 0) {
         result |= (~0 << shift);
     }
 

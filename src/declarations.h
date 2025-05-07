@@ -238,6 +238,8 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
 wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value);
 wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value);
+wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode);
+void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value);
 
 void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
 wasmu_ValueType wasmu_popType(wasmu_Context* context);

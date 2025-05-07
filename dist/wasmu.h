@@ -651,6 +651,8 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module);
 
 wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value);
 wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value);
+wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode);
+void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value);
 
 void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
 wasmu_ValueType wasmu_popType(wasmu_Context* context);
@@ -955,7 +957,7 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
         shift += 7;
     } while ((byte & 0b10000000) != 0);
 
-    if (shift < sizeof(result) / 8 && result & 0b10000000) {
+    if (shift < sizeof(result) * 8 && (byte & 0b01000000) != 0) {
         result |= (~0 << shift);
     }
 
@@ -1689,6 +1691,58 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
         memory->data[index++] = value & 0xFF;
         value >>= 8;
     }
+}
+
+wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {
+    switch (opcode) {
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I32_LOAD8_U:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I64_LOAD8_U:
+        case WASMU_OP_I32_STORE8:
+        case WASMU_OP_I64_STORE8:
+            return 1;
+
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I32_LOAD16_U:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD16_U:
+        case WASMU_OP_I32_STORE16:
+        case WASMU_OP_I64_STORE16:
+            return 2;
+
+        case WASMU_OP_I64_LOAD32_S:
+        case WASMU_OP_I64_LOAD32_U:
+        case WASMU_OP_I64_STORE32:
+            return 4;
+
+        default:
+            return wasmu_getValueTypeSize(wasmu_getOpcodeSubjectType(opcode));
+    }
+}
+
+void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value) {
+    switch (opcode) {
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD32_S:
+            break;
+
+        default: return;
+    }
+
+    wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
+    wasmu_UInt sign = *value >> (dataSize * 8) - 1;
+
+    if (!sign) {
+        return;
+    }
+
+    wasmu_UInt mask = -1;
+
+    *value |= (mask << (dataSize * 8));
 }
 
 // src/stacks.h
@@ -2694,6 +2748,16 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_I64_LOAD:
         case WASMU_OP_F32_LOAD:
         case WASMU_OP_F64_LOAD:
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I32_LOAD8_U:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I64_LOAD8_U:
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I32_LOAD16_U:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD16_U:
+        case WASMU_OP_I64_LOAD32_S:
+        case WASMU_OP_I64_LOAD32_U:
         {
             wasmu_Count alignment = wasmu_readUInt(module);
             wasmu_Count offset = wasmu_readUInt(module);
@@ -2702,6 +2766,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
+            wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
             wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
 
             if (!memory) {
@@ -2713,13 +2778,18 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             wasmu_Count index = offset + wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
             wasmu_UInt value = 0;
 
-            WASMU_DEBUG_LOG("Load - alignment: %d, offset: 0x%08x (index: 0x%08x)", alignment, offset, index);
+            WASMU_DEBUG_LOG(
+                "Load - alignment: %d, offset: 0x%08x (index: 0x%08x, dataSize: %d)",
+                alignment, offset, index, dataSize
+            );
 
-            if (!wasmu_memoryLoad(memory, index, size, &value)) {
+            if (!wasmu_memoryLoad(memory, index, dataSize, &value)) {
                 WASMU_DEBUG_LOG("Unable to load from memory");
                 context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
                 return WASMU_FALSE;
             }
+
+            wasmu_signExtendValue(opcode, &value);
 
             WASMU_DEBUG_LOG("Loaded value: %ld", value);
 
@@ -2733,6 +2803,11 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_I64_STORE:
         case WASMU_OP_F32_STORE:
         case WASMU_OP_F64_STORE:
+        case WASMU_OP_I32_STORE8:
+        case WASMU_OP_I64_STORE8:
+        case WASMU_OP_I32_STORE16:
+        case WASMU_OP_I64_STORE16:
+        case WASMU_OP_I64_STORE32:
         {
             wasmu_Count alignment = wasmu_readUInt(module);
             wasmu_Count offset = wasmu_readUInt(module);
@@ -2741,6 +2816,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
+            wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
             wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
 
             if (!memory) {
@@ -2752,9 +2828,12 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             wasmu_UInt value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
             wasmu_Count index = offset + wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
 
-            WASMU_DEBUG_LOG("Store - alignment: %d, offset: 0x%08x, value: %ld (index: 0x%08x)", alignment, offset, value, index);
+            WASMU_DEBUG_LOG(
+                "Store - alignment: %d, offset: 0x%08x, value: %ld (index: 0x%08x, dataSize: %d)",
+                alignment, offset, value, index, dataSize
+            );
 
-            if (!wasmu_memoryStore(memory, index, size, value)) {
+            if (!wasmu_memoryStore(memory, index, dataSize, value)) {
                 WASMU_DEBUG_LOG("Unable to store to memory");
                 context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
                 return WASMU_FALSE;
@@ -2820,7 +2899,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F32_CONST:
         case WASMU_OP_F64_CONST:
         {
-            wasmu_UInt value = wasmu_readInt(module);
+            wasmu_Int value = wasmu_readInt(module);
 
             WASMU_FF_SKIP_HERE();
 

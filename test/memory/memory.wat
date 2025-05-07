@@ -22,4 +22,11 @@
         i32.load
         i32.add
     )
+    (func (export "storeLoad16") (result i32)
+        i32.const 2048
+        i32.const -1234
+        i32.store16
+        i32.const 2048
+        i32.load16_s
+    )
 )
