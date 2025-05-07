@@ -451,7 +451,8 @@ typedef enum {
     WASMU_SECTION_START = 8,
     WASMU_SECTION_ELEMENT = 9,
     WASMU_SECTION_CODE = 10,
-    WASMU_SECTION_DATA = 11
+    WASMU_SECTION_DATA = 11,
+    WASMU_SECTION_DATA_COUNT = 12
 } wasmu_SectionType;
 
 typedef enum wasmu_SignatureType {
@@ -647,6 +648,9 @@ wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module);
 wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
+
+wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value);
+wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value);
 
 void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
 wasmu_ValueType wasmu_popType(wasmu_Context* context);
@@ -1515,6 +1519,43 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseDataSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count dataSegmentsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < dataSegmentsCount; i++) {
+        wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
+
+        if (!memory) {
+            WASMU_DEBUG_LOG("No memory is defined");
+            module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        WASMU_NEXT(); // Segment flags — not required
+        WASMU_NEXT(); // Const opcode — also not required
+
+        wasmu_Count startIndex = wasmu_readUInt(module);
+
+        WASMU_NEXT(); // End opcode
+
+        wasmu_Count dataSize = wasmu_readUInt(module);
+
+        for (wasmu_Count j = 0; j < dataSize; j++) {
+            wasmu_memoryStore(memory, startIndex + j, 1, WASMU_NEXT());
+        }
+    }
+
+    return WASMU_TRUE;
+}
+
+wasmu_Bool wasmu_parseDataCountSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count dataCount = wasmu_readUInt(module);
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
     WASMU_DEBUG_LOG("Parse sections");
 
@@ -1582,6 +1623,16 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_CODE:
                 WASMU_DEBUG_LOG("Section: code");
                 if (!wasmu_parseCodeSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_DATA:
+                WASMU_DEBUG_LOG("Section: data");
+                if (!wasmu_parseDataSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_DATA_COUNT:
+                WASMU_DEBUG_LOG("Section: data count");
+                if (!wasmu_parseDataCountSection(module)) {return WASMU_FALSE;}
                 break;
 
             default:

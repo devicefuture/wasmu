@@ -83,5 +83,26 @@ TEST {
     ASSERT(wasmu_popInt(context, 4) == 1, "Result is not 1");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
 
+    printf("Get function: \"readData\"\n");
+
+    wasmu_Function* readData = wasmu_getExportedFunction(module, "readData");
+
+    ASSERT(readData, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, readData), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    int expectedValue = (
+        ('A' | ('B' << 8) | ('C' << 16) | ('D' << 24)) +
+        ('E' | ('F' << 8) | ('G' << 16) | ('H' << 24))
+    );
+
+    ASSERT(wasmu_popInt(context, 4) == expectedValue, "Result is not expected value");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
     PASS();
 }

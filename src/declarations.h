@@ -38,7 +38,8 @@ typedef enum {
     WASMU_SECTION_START = 8,
     WASMU_SECTION_ELEMENT = 9,
     WASMU_SECTION_CODE = 10,
-    WASMU_SECTION_DATA = 11
+    WASMU_SECTION_DATA = 11,
+    WASMU_SECTION_DATA_COUNT = 12
 } wasmu_SectionType;
 
 typedef enum wasmu_SignatureType {
@@ -234,6 +235,9 @@ wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module);
 wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction);
 
 wasmu_Bool wasmu_parseSections(wasmu_Module* module);
+
+wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value);
+wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value);
 
 void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
 wasmu_ValueType wasmu_popType(wasmu_Context* context);
