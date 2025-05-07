@@ -54,6 +54,10 @@
 #define WASMU_IMPORT_RESOLUTION_DEPTH 16
 #endif
 
+#ifndef WASMU_MAX_TABLE_SIZE
+#define WASMU_MAX_TABLE_SIZE 1024
+#endif
+
 // src/common.h
 
 typedef WASMU_BOOL wasmu_Bool;
@@ -418,7 +422,8 @@ typedef enum {
     WASMU_ERROR_STATE_INVALID_INDEX,
     WASMU_ERROR_STATE_PRECONDITION_FAILED,
     WASMU_ERROR_STATE_DEPTH_EXCEEDED,
-    WASMU_ERROR_STATE_IMPORT_NOT_FOUND
+    WASMU_ERROR_STATE_IMPORT_NOT_FOUND,
+    WASMU_ERROR_STATE_LIMIT_EXCEEDED
 } wasmu_ErrorState;
 
 typedef enum {
@@ -1403,6 +1408,62 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseElementSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count elementSegmentsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < elementSegmentsCount; i++) {
+        wasmu_Table* table = WASMU_GET_ENTRY(module->tables, module->tablesCount, 0);
+
+        if (!table) {
+            WASMU_DEBUG_LOG("No table exists for element segment");
+            module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        WASMU_NEXT(); // Segment flags — not required
+        WASMU_NEXT(); // Const opcode — also not required
+
+        wasmu_Count startIndex = wasmu_readUInt(module);
+
+        WASMU_NEXT(); // End opcode
+
+        WASMU_DEBUG_LOG("Start index: %d", startIndex);
+
+        while (table->entriesCount < startIndex) {
+            if (table->entriesCount == WASMU_MAX_TABLE_SIZE) {
+                WASMU_DEBUG_LOG("Start index is past max table size");
+                module->context->errorState = WASMU_ERROR_STATE_LIMIT_EXCEEDED;
+            }
+
+            WASMU_ADD_ENTRY(table->entries, table->entriesCount, -1);
+        }
+
+        wasmu_Count elementsCount = wasmu_readUInt(module);
+
+        WASMU_DEBUG_LOG("Elements count: %d", elementsCount);
+
+        for (wasmu_Count i = 0; i < elementsCount; i++) {
+            wasmu_Count entry = wasmu_readUInt(module);
+
+            WASMU_DEBUG_LOG("Add table element - index: %d, entry: %d", startIndex + i, entry);
+
+            if (table->entriesCount == WASMU_MAX_TABLE_SIZE) {
+                WASMU_DEBUG_LOG("Max table size reached");
+                module->context->errorState = WASMU_ERROR_STATE_LIMIT_EXCEEDED;
+            }
+
+            if (table->entriesCount <= startIndex + i) {
+                WASMU_ADD_ENTRY(table->entries, table->entriesCount, entry);
+            } else {
+                table->entries[startIndex + i] = entry;
+            }
+        }
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count bodiesCount = wasmu_readUInt(module);
@@ -1416,9 +1477,7 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
             if (!function) {
                 WASMU_DEBUG_LOG("No function exists for code body");
-
                 module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
-
                 return WASMU_FALSE;
             }
 
@@ -1513,6 +1572,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_EXPORT:
                 WASMU_DEBUG_LOG("Section: export");
                 if (!wasmu_parseExportSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_ELEMENT:
+                WASMU_DEBUG_LOG("Section: element");
+                if (!wasmu_parseElementSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_CODE:
@@ -2417,6 +2481,45 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             }
 
             break;
+        }
+
+        case WASMU_OP_CALL_INDIRECT:
+        {
+            wasmu_Count typeIndex = wasmu_readUInt(module);
+            wasmu_Count tableIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Count elementIndex = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            wasmu_Table* table = WASMU_GET_ENTRY(module->tables, module->tablesCount, tableIndex);
+
+            WASMU_DEBUG_LOG(
+                "Call indirect - typeIndex: %d, tableIndex: %d, elementIndex: %d",
+                typeIndex, tableIndex, elementIndex
+            );
+
+            if (!table) {
+                WASMU_DEBUG_LOG("Unknown table");
+                module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_Count* functionIndex = WASMU_GET_ENTRY(table->entries, table->entriesCount, elementIndex);
+
+            if (!functionIndex) {
+                WASMU_DEBUG_LOG("Table element index is out of bounds");
+                module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            WASMU_DEBUG_LOG("Resolve to function index - functionIndex: %d", *functionIndex);
+
+            if (!wasmu_callFunctionByIndex(context, context->activeModuleIndex, *functionIndex)) {
+                WASMU_DEBUG_LOG("Unknown function referred to by table element");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
         }
 
         case WASMU_OP_DROP:

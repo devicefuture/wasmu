@@ -274,6 +274,62 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
+wasmu_Bool wasmu_parseElementSection(wasmu_Module* module) {
+    wasmu_Count size = wasmu_readUInt(module);
+    wasmu_Count elementSegmentsCount = wasmu_readUInt(module);
+
+    for (wasmu_Count i = 0; i < elementSegmentsCount; i++) {
+        wasmu_Table* table = WASMU_GET_ENTRY(module->tables, module->tablesCount, 0);
+
+        if (!table) {
+            WASMU_DEBUG_LOG("No table exists for element segment");
+            module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+            return WASMU_FALSE;
+        }
+
+        WASMU_NEXT(); // Segment flags — not required
+        WASMU_NEXT(); // Const opcode — also not required
+
+        wasmu_Count startIndex = wasmu_readUInt(module);
+
+        WASMU_NEXT(); // End opcode
+
+        WASMU_DEBUG_LOG("Start index: %d", startIndex);
+
+        while (table->entriesCount < startIndex) {
+            if (table->entriesCount == WASMU_MAX_TABLE_SIZE) {
+                WASMU_DEBUG_LOG("Start index is past max table size");
+                module->context->errorState = WASMU_ERROR_STATE_LIMIT_EXCEEDED;
+            }
+
+            WASMU_ADD_ENTRY(table->entries, table->entriesCount, -1);
+        }
+
+        wasmu_Count elementsCount = wasmu_readUInt(module);
+
+        WASMU_DEBUG_LOG("Elements count: %d", elementsCount);
+
+        for (wasmu_Count i = 0; i < elementsCount; i++) {
+            wasmu_Count entry = wasmu_readUInt(module);
+
+            WASMU_DEBUG_LOG("Add table element - index: %d, entry: %d", startIndex + i, entry);
+
+            if (table->entriesCount == WASMU_MAX_TABLE_SIZE) {
+                WASMU_DEBUG_LOG("Max table size reached");
+                module->context->errorState = WASMU_ERROR_STATE_LIMIT_EXCEEDED;
+            }
+
+            if (table->entriesCount <= startIndex + i) {
+                WASMU_ADD_ENTRY(table->entries, table->entriesCount, entry);
+            } else {
+                table->entries[startIndex + i] = entry;
+            }
+        }
+    }
+
+    return WASMU_TRUE;
+}
+
 wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count bodiesCount = wasmu_readUInt(module);
@@ -287,9 +343,7 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
 
             if (!function) {
                 WASMU_DEBUG_LOG("No function exists for code body");
-
                 module->context->errorState = WASMU_ERROR_STATE_CODE_BODY_MISMATCH;
-
                 return WASMU_FALSE;
             }
 
@@ -384,6 +438,11 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
             case WASMU_SECTION_EXPORT:
                 WASMU_DEBUG_LOG("Section: export");
                 if (!wasmu_parseExportSection(module)) {return WASMU_FALSE;}
+                break;
+
+            case WASMU_SECTION_ELEMENT:
+                WASMU_DEBUG_LOG("Section: element");
+                if (!wasmu_parseElementSection(module)) {return WASMU_FALSE;}
                 break;
 
             case WASMU_SECTION_CODE:

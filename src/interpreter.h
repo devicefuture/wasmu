@@ -336,6 +336,45 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_CALL_INDIRECT:
+        {
+            wasmu_Count typeIndex = wasmu_readUInt(module);
+            wasmu_Count tableIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Count elementIndex = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            wasmu_Table* table = WASMU_GET_ENTRY(module->tables, module->tablesCount, tableIndex);
+
+            WASMU_DEBUG_LOG(
+                "Call indirect - typeIndex: %d, tableIndex: %d, elementIndex: %d",
+                typeIndex, tableIndex, elementIndex
+            );
+
+            if (!table) {
+                WASMU_DEBUG_LOG("Unknown table");
+                module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_Count* functionIndex = WASMU_GET_ENTRY(table->entries, table->entriesCount, elementIndex);
+
+            if (!functionIndex) {
+                WASMU_DEBUG_LOG("Table element index is out of bounds");
+                module->context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            WASMU_DEBUG_LOG("Resolve to function index - functionIndex: %d", *functionIndex);
+
+            if (!wasmu_callFunctionByIndex(context, context->activeModuleIndex, *functionIndex)) {
+                WASMU_DEBUG_LOG("Unknown function referred to by table element");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+        }
+
         case WASMU_OP_DROP:
         {
             WASMU_FF_SKIP_HERE();
