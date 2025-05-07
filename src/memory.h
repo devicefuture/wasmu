@@ -25,7 +25,9 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
                 return WASMU_FALSE;
             }
 
-            memory->pagesCount = newPagesCount;
+            if (newPagesCount > memory->pagesCount) {
+                memory->pagesCount = newPagesCount;
+            }
 
             memory->size = WASMU_MEMORY_ALIGN_BLOCK(index);
             memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size);

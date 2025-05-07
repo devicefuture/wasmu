@@ -15,7 +15,7 @@ TEST {
 
     ASSERT(module->memoriesCount == 1, "Memory count is not 1");
     ASSERT(module->memories[0].minPages == 1, "Memory min pages count is not 1");
-    ASSERT(module->memories[0].maxPages == 2, "Memory max pages count is not 2");
+    ASSERT(module->memories[0].maxPages == 4, "Memory max pages count is not 4");
 
     printf("Get function: \"storeLoad\"\n");
 
@@ -31,6 +31,56 @@ TEST {
     ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
 
     ASSERT(wasmu_popInt(context, 4) == 4321, "Result is not 4321");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Get function: \"getSize\"\n");
+
+    wasmu_Function* getSize = wasmu_getExportedFunction(module, "getSize");
+
+    ASSERT(getSize, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, getSize), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 1, "Result is not 1");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Get function: \"grow\"\n");
+
+    wasmu_Function* grow = wasmu_getExportedFunction(module, "grow");
+
+    ASSERT(grow, "Function not found");
+
+    printf("Test growing by 4 pages\n");
+
+    wasmu_pushInt(context, 4, 4); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, grow), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == -1, "Result is not -1");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
+    printf("Test growing by 3 pages\n");
+
+    wasmu_pushInt(context, 4, 3); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, grow), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 1, "Result is not 1");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
 
     PASS();

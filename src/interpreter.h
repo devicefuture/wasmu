@@ -563,6 +563,58 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_MEMORY_SIZE:
+        {
+            wasmu_Count memoryIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, memoryIndex);
+
+            if (!memory) {
+                WASMU_DEBUG_LOG("Unknown memory");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            WASMU_DEBUG_LOG("Get memory size - (pages: %d)", memory->pagesCount);
+
+            wasmu_pushInt(context, 4, memory->pagesCount); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+            break;
+        }
+
+        case WASMU_OP_MEMORY_GROW:
+        {
+            wasmu_Count memoryIndex = wasmu_readUInt(module);
+
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, memoryIndex);
+
+            if (!memory) {
+                WASMU_DEBUG_LOG("Unknown memory");
+                context->errorState = WASMU_ERROR_STATE_INVALID_INDEX;
+                return WASMU_FALSE;
+            }
+
+            wasmu_Count pagesToAdd = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+            wasmu_Count newPagesCount = memory->pagesCount + pagesToAdd;
+
+            WASMU_DEBUG_LOG("Grow memory - pagesToAdd: %d, newPagesCount", pagesToAdd, newPagesCount);
+
+            if (newPagesCount > memory->maxPages) {
+                wasmu_pushInt(context, 4, -1); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+                break;
+            }
+
+            wasmu_pushInt(context, 4, memory->pagesCount); wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+            memory->pagesCount = newPagesCount;
+
+            break;
+        }
+
         case WASMU_OP_I32_CONST:
         case WASMU_OP_I64_CONST:
         case WASMU_OP_F32_CONST:
