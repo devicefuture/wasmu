@@ -48,4 +48,12 @@
         f32.const 123.456789
         f64.promote_f32
     )
+    (func (export "reinterpretToI64") (result i64)
+        f64.const 123
+        i64.reinterpret_f64
+    )
+    (func (export "reinterpretToF64") (result f64)
+        i64.const 1123418112
+        f64.reinterpret_i64
+    )
 )

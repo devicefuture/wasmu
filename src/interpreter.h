@@ -1064,6 +1064,42 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_I32_REINTERPRET_F32:
+        case WASMU_OP_I64_REINTERPRET_F64:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeObjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+            wasmu_Float floatValue = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_ValueType targetType = size == 8 ? WASMU_VALUE_TYPE_I64 : WASMU_VALUE_TYPE_I32;
+
+            if (wasmu_isNan(floatValue) || wasmu_isInfinity(floatValue)) {
+                floatValue = 0;
+            }
+
+            wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF32 = floatValue}).asI32);
+            wasmu_pushType(context, targetType);
+
+            break;
+        }
+
+        case WASMU_OP_F32_REINTERPRET_I32:
+        case WASMU_OP_F64_REINTERPRET_I64:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeObjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+            wasmu_Int intValue = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
+            wasmu_ValueType targetType = size == 8 ? WASMU_VALUE_TYPE_F64 : WASMU_VALUE_TYPE_F32;
+
+            wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI32 = intValue}).asF32);
+            wasmu_pushType(context, targetType);
+
+            break;
+        }
+
         default:
             WASMU_DEBUG_LOG("Opcode not implemented");
             context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;

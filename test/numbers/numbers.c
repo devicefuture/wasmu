@@ -173,7 +173,39 @@ TEST {
     ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
 
     ASSERT(wasmu_popFloat(context, WASMU_VALUE_TYPE_F64) == (wasmu_F32)123.456789, "Result is not 123.456789");
-    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_F64, "Result type is not F32");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_F64, "Result type is not F64");
+
+    printf("Get function: \"reinterpretToI64\"\n");
+
+    wasmu_Function* reinterpretToI64 = wasmu_getExportedFunction(module, "reinterpretToI64");
+
+    ASSERT(reinterpretToI64, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, reinterpretToI64), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 8) == 1123418112, "Result is not 1123418112");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
+
+    printf("Get function: \"reinterpretToF64\"\n");
+
+    wasmu_Function* reinterpretToF64 = wasmu_getExportedFunction(module, "reinterpretToF64");
+
+    ASSERT(reinterpretToF64, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, reinterpretToF64), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popFloat(context, WASMU_VALUE_TYPE_F64) == 123, "Result is not 123");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_F64, "Result type is not F64");
 
     PASS();
 }
