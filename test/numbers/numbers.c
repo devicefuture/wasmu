@@ -93,5 +93,21 @@ TEST {
     ASSERT(wasmu_popInt(context, 8) == 4611686018427387904, "Result is not 4611686018427387904");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
 
+    printf("Get function: \"wrap\"\n");
+
+    wasmu_Function* wrap = wasmu_getExportedFunction(module, "wrap");
+
+    ASSERT(wrap, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, wrap), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 0x76543210, "Result is not 0x76543210");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
     PASS();
 }

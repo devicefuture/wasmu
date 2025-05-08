@@ -937,6 +937,20 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_I32_WRAP_I64:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Int value = wasmu_popInt(context, 8); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I64);
+
+            WASMU_DEBUG_LOG("Wrap I64 into I32 - value: %ld", value);
+
+            wasmu_pushInt(context, 4, value);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_I32);
+
+            break;
+        }
+
         case WASMU_OP_I32_TRUNC_F32_S:
         case WASMU_OP_I32_TRUNC_F32_U:
         case WASMU_OP_I64_TRUNC_F32_S:

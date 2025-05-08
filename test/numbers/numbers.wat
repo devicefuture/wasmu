@@ -28,4 +28,8 @@
         f32.div
         i64.trunc_f32_s
     )
+    (func (export "wrap") (result i32)
+        i64.const 0xFEDCBA9876543210
+        i32.wrap_i64
+    )
 )
