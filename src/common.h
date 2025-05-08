@@ -169,3 +169,13 @@ wasmu_UInt wasmu_rotateRight(wasmu_UInt value, wasmu_Count size, wasmu_Count shi
 
     return (value >> shift) | (value << ((size * 8) - shift));
 }
+
+wasmu_Bool wasmu_isNan(wasmu_Float value) {
+    return value != value;
+}
+
+// @source reference https://stackoverflow.com/a/2249173
+// @licence ccbysa2.5
+wasmu_Bool wasmu_isInfinity(wasmu_Float value) {
+    return !wasmu_isNan(value) && wasmu_isNan(value - value);
+}

@@ -75,12 +75,12 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
 
     do {
         byte = WASMU_NEXT();
-        result |= (byte & 0b01111111) << shift;
+        result |= ((wasmu_Int)byte & 0b01111111) << shift;
         shift += 7;
     } while ((byte & 0b10000000) != 0);
 
     if (shift < sizeof(result) * 8 && (byte & 0b01000000) != 0) {
-        result |= (~0 << shift);
+        result |= ((wasmu_Int)(~0) << shift);
     }
 
     return result;
@@ -140,6 +140,10 @@ wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
         case WASMU_VALUE_TYPE_I32:
         case WASMU_VALUE_TYPE_F32:
             return 4;
+
+        case WASMU_VALUE_TYPE_I64:
+        case WASMU_VALUE_TYPE_F64:
+            return 8;
 
         default:
             WASMU_DEBUG_LOG("Unknown value type: 0x%02x", type);

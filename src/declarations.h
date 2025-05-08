@@ -216,6 +216,13 @@ typedef struct wasmu_Export {
     } data;
 } wasmu_Export;
 
+typedef union wasmu_FloatConverter {
+    wasmu_I32 asI32;
+    wasmu_I64 asI64;
+    wasmu_F32 asF32;
+    wasmu_F64 asF64;
+} wasmu_FloatConverter;
+
 wasmu_Context* wasmu_newContext();
 wasmu_Bool wasmu_isRunning(wasmu_Context* context);
 

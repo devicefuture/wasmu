@@ -232,6 +232,16 @@ wasmu_UInt wasmu_rotateRight(wasmu_UInt value, wasmu_Count size, wasmu_Count shi
     return (value >> shift) | (value << ((size * 8) - shift));
 }
 
+wasmu_Bool wasmu_isNan(wasmu_Float value) {
+    return value != value;
+}
+
+// @source reference https://stackoverflow.com/a/2249173
+// @licence ccbysa2.5
+wasmu_Bool wasmu_isInfinity(wasmu_Float value) {
+    return !wasmu_isNan(value) && wasmu_isNan(value - value);
+}
+
 // src/opcodes.h
 
 typedef enum {
@@ -629,6 +639,13 @@ typedef struct wasmu_Export {
     } data;
 } wasmu_Export;
 
+typedef union wasmu_FloatConverter {
+    wasmu_I32 asI32;
+    wasmu_I64 asI64;
+    wasmu_F32 asF32;
+    wasmu_F64 asF64;
+} wasmu_FloatConverter;
+
 wasmu_Context* wasmu_newContext();
 wasmu_Bool wasmu_isRunning(wasmu_Context* context);
 
@@ -953,12 +970,12 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
 
     do {
         byte = WASMU_NEXT();
-        result |= (byte & 0b01111111) << shift;
+        result |= ((wasmu_Int)byte & 0b01111111) << shift;
         shift += 7;
     } while ((byte & 0b10000000) != 0);
 
     if (shift < sizeof(result) * 8 && (byte & 0b01000000) != 0) {
-        result |= (~0 << shift);
+        result |= ((wasmu_Int)(~0) << shift);
     }
 
     return result;
@@ -1018,6 +1035,10 @@ wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
         case WASMU_VALUE_TYPE_I32:
         case WASMU_VALUE_TYPE_F32:
             return 4;
+
+        case WASMU_VALUE_TYPE_I64:
+        case WASMU_VALUE_TYPE_F64:
+            return 8;
 
         default:
             WASMU_DEBUG_LOG("Unknown value type: 0x%02x", type);
@@ -2000,7 +2021,16 @@ wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_
     wasmu_ValueStack* stack = &context->valueStack;
 
     for (wasmu_Count i = 0; i < bytes; i++) {
-        value |= stack->data[position + i] << (i * 8);
+        value |= (wasmu_Int)(stack->data[position + i]) << (i * 8);
+    }
+
+    if (value & ((wasmu_Int)1 << ((bytes * 8) - 1))) {
+        // Sign-extend to 64-bit int
+
+        wasmu_UInt mask = -1;
+
+        mask <<= bytes * 8;
+        value |= mask;
     }
 
     return value;
@@ -2037,6 +2067,43 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     stack->position -= bytes;
 
     return wasmu_stackGetInt(context, stack->position, bytes);
+}
+
+void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float value) {
+    if (wasmu_isNan(value) || wasmu_isInfinity(value)) {
+        value = 0;
+    }
+
+    wasmu_FloatConverter converter;
+
+    switch (type) {
+        case WASMU_VALUE_TYPE_F32:
+        default:
+            converter.asF32 = value;
+            wasmu_pushInt(context, 4, converter.asI32);
+            break;
+
+        case WASMU_VALUE_TYPE_F64:
+            converter.asF64 = value;
+            wasmu_pushInt(context, 8, converter.asI64);
+            break;
+    }
+
+}
+
+wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {
+    wasmu_FloatConverter converter;
+
+    switch (type) {
+        case WASMU_VALUE_TYPE_F32:
+        default:
+            converter.asI32 = wasmu_popInt(context, 4);
+            return converter.asF32;
+
+        case WASMU_VALUE_TYPE_F64:
+            converter.asI64 = wasmu_popInt(context, 8);
+            return converter.asF64;
+    }
 }
 
 // src/functions.h
@@ -2256,7 +2323,7 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
 #define WASMU_FF_STEP_IN() if (!wasmu_fastForwardStepInLabel(context)) {return WASMU_FALSE;}
 #define WASMU_FF_STEP_OUT() if (!wasmu_fastForwardStepOutLabel(context)) {return WASMU_FALSE;}
 
-#define WASMU_OPERATOR(baseType, operator) { \
+#define WASMU_INT_OPERATOR(baseType, operator) { \
         WASMU_FF_SKIP_HERE(); \
         \
         wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
@@ -2268,6 +2335,22 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
         WASMU_DEBUG_LOG("Operator " #operator " - a: %ld, b: %ld (result: %ld)", a, b, a operator b); \
         \
         wasmu_pushInt(context, size, a operator b); \
+        wasmu_pushType(context, type); \
+        \
+        break; \
+    }
+
+#define WASMU_FLOAT_OPERATOR(operator) { \
+        WASMU_FF_SKIP_HERE(); \
+        \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        \
+        wasmu_Float b = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        wasmu_Float a = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        \
+        WASMU_DEBUG_LOG("Operator " #operator " - a: %f, b: %f (result: %f)", a, b, a operator b); \
+        \
+        wasmu_pushFloat(context, type, a operator b); \
         wasmu_pushType(context, type); \
         \
         break; \
@@ -2934,67 +3017,67 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_EQ:
         case WASMU_OP_I64_EQ:
-            WASMU_OPERATOR(wasmu_Int, ==)
+            WASMU_INT_OPERATOR(wasmu_Int, ==)
 
         case WASMU_OP_F32_EQ:
         case WASMU_OP_F64_EQ:
-            WASMU_OPERATOR(wasmu_Float, ==)
+            WASMU_FLOAT_OPERATOR(==)
 
         case WASMU_OP_I32_NE:
         case WASMU_OP_I64_NE:
-            WASMU_OPERATOR(wasmu_Int, !=)
+            WASMU_INT_OPERATOR(wasmu_Int, !=)
 
         case WASMU_OP_F32_NE:
         case WASMU_OP_F64_NE:
-            WASMU_OPERATOR(wasmu_Float, !=)
+            WASMU_FLOAT_OPERATOR(!=)
 
         case WASMU_OP_I32_LT_S:
         case WASMU_OP_I64_LT_S:
-            WASMU_OPERATOR(wasmu_Int, <)
+            WASMU_INT_OPERATOR(wasmu_Int, <)
 
         case WASMU_OP_I32_LT_U:
         case WASMU_OP_I64_LT_U:
-            WASMU_OPERATOR(wasmu_UInt, <)
+            WASMU_INT_OPERATOR(wasmu_UInt, <)
 
         case WASMU_OP_F32_LT:
         case WASMU_OP_F64_LT:
-            WASMU_OPERATOR(wasmu_Float, <)
+            WASMU_FLOAT_OPERATOR(<)
 
         case WASMU_OP_I32_GT_S:
         case WASMU_OP_I64_GT_S:
-            WASMU_OPERATOR(wasmu_Int, >)
+            WASMU_INT_OPERATOR(wasmu_Int, >)
 
         case WASMU_OP_I32_GT_U:
         case WASMU_OP_I64_GT_U:
-            WASMU_OPERATOR(wasmu_UInt, >)
+            WASMU_INT_OPERATOR(wasmu_UInt, >)
 
         case WASMU_OP_F32_GT:
         case WASMU_OP_F64_GT:
-            WASMU_OPERATOR(wasmu_Float, >)
+            WASMU_FLOAT_OPERATOR(>)
 
         case WASMU_OP_I32_LE_S:
         case WASMU_OP_I64_LE_S:
-            WASMU_OPERATOR(wasmu_Int, <=)
+            WASMU_INT_OPERATOR(wasmu_Int, <=)
 
         case WASMU_OP_I32_LE_U:
         case WASMU_OP_I64_LE_U:
-            WASMU_OPERATOR(wasmu_UInt, <=)
+            WASMU_INT_OPERATOR(wasmu_UInt, <=)
 
         case WASMU_OP_F32_LE:
         case WASMU_OP_F64_LE:
-            WASMU_OPERATOR(wasmu_Float, <=)
+            WASMU_FLOAT_OPERATOR(<=)
 
         case WASMU_OP_I32_GE_S:
         case WASMU_OP_I64_GE_S:
-            WASMU_OPERATOR(wasmu_Int, >=)
+            WASMU_INT_OPERATOR(wasmu_Int, >=)
 
         case WASMU_OP_I32_GE_U:
         case WASMU_OP_I64_GE_U:
-            WASMU_OPERATOR(wasmu_UInt, >=)
+            WASMU_INT_OPERATOR(wasmu_UInt, >=)
 
         case WASMU_OP_F32_GE:
         case WASMU_OP_F64_GE:
-            WASMU_OPERATOR(wasmu_Float, >=)
+            WASMU_FLOAT_OPERATOR(>=)
 
         case WASMU_OP_I32_CLZ:
         case WASMU_OP_I64_CLZ:
@@ -3055,71 +3138,71 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_ADD:
         case WASMU_OP_I64_ADD:
-            WASMU_OPERATOR(wasmu_Int, +)
+            WASMU_INT_OPERATOR(wasmu_Int, +)
 
         case WASMU_OP_F32_ADD:
         case WASMU_OP_F64_ADD:
-            WASMU_OPERATOR(wasmu_Float, +)
+            WASMU_FLOAT_OPERATOR(+)
 
         case WASMU_OP_I32_SUB:
         case WASMU_OP_I64_SUB:
-            WASMU_OPERATOR(wasmu_Int, -)
+            WASMU_INT_OPERATOR(wasmu_Int, -)
 
         case WASMU_OP_F32_SUB:
         case WASMU_OP_F64_SUB:
-            WASMU_OPERATOR(wasmu_Float, -)
+            WASMU_FLOAT_OPERATOR(-)
 
         case WASMU_OP_I32_MUL:
         case WASMU_OP_I64_MUL:
-            WASMU_OPERATOR(wasmu_Int, *)
+            WASMU_INT_OPERATOR(wasmu_Int, *)
 
         case WASMU_OP_F32_MUL:
         case WASMU_OP_F64_MUL:
-            WASMU_OPERATOR(wasmu_Float, *)
+            WASMU_FLOAT_OPERATOR(*)
 
         case WASMU_OP_I32_DIV_S:
         case WASMU_OP_I64_DIV_S:
-            WASMU_OPERATOR(wasmu_Int, /)
+            WASMU_INT_OPERATOR(wasmu_Int, /)
 
         case WASMU_OP_I32_DIV_U:
         case WASMU_OP_I64_DIV_U:
-            WASMU_OPERATOR(wasmu_UInt, /)
+            WASMU_INT_OPERATOR(wasmu_UInt, /)
 
         case WASMU_OP_F32_DIV:
         case WASMU_OP_F64_DIV:
-            WASMU_OPERATOR(wasmu_Float, /)
+            WASMU_FLOAT_OPERATOR(/)
 
         case WASMU_OP_I32_REM_S:
         case WASMU_OP_I64_REM_S:
-            WASMU_OPERATOR(wasmu_Int, %)
+            WASMU_INT_OPERATOR(wasmu_Int, %)
 
         case WASMU_OP_I32_REM_U:
         case WASMU_OP_I64_REM_U:
-            WASMU_OPERATOR(wasmu_UInt, %)
+            WASMU_INT_OPERATOR(wasmu_UInt, %)
 
         case WASMU_OP_I32_AND:
         case WASMU_OP_I64_AND:
-            WASMU_OPERATOR(wasmu_Int, &)
+            WASMU_INT_OPERATOR(wasmu_Int, &)
 
         case WASMU_OP_I32_OR:
         case WASMU_OP_I64_OR:
-            WASMU_OPERATOR(wasmu_Int, |)
+            WASMU_INT_OPERATOR(wasmu_Int, |)
 
         case WASMU_OP_I32_XOR:
         case WASMU_OP_I64_XOR:
-            WASMU_OPERATOR(wasmu_Int, ^)
+            WASMU_INT_OPERATOR(wasmu_Int, ^)
 
         case WASMU_OP_I32_SHL:
         case WASMU_OP_I64_SHL:
-            WASMU_OPERATOR(wasmu_Int, <<)
+            WASMU_INT_OPERATOR(wasmu_Int, <<)
 
         case WASMU_OP_I32_SHR_S:
         case WASMU_OP_I64_SHR_S:
-            WASMU_OPERATOR(wasmu_Int, >>)
+            WASMU_INT_OPERATOR(wasmu_Int, >>)
 
         case WASMU_OP_I32_SHR_U:
         case WASMU_OP_I64_SHR_U:
-            WASMU_OPERATOR(wasmu_UInt, >>)
+            WASMU_INT_OPERATOR(wasmu_UInt, >>)
 
         case WASMU_OP_I32_ROTL:
         case WASMU_OP_I64_ROTL:

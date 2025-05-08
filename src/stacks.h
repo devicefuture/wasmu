@@ -251,7 +251,16 @@ wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_
     wasmu_ValueStack* stack = &context->valueStack;
 
     for (wasmu_Count i = 0; i < bytes; i++) {
-        value |= stack->data[position + i] << (i * 8);
+        value |= (wasmu_Int)(stack->data[position + i]) << (i * 8);
+    }
+
+    if (value & ((wasmu_Int)1 << ((bytes * 8) - 1))) {
+        // Sign-extend to 64-bit int
+
+        wasmu_UInt mask = -1;
+
+        mask <<= bytes * 8;
+        value |= mask;
     }
 
     return value;
@@ -288,4 +297,41 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     stack->position -= bytes;
 
     return wasmu_stackGetInt(context, stack->position, bytes);
+}
+
+void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float value) {
+    if (wasmu_isNan(value) || wasmu_isInfinity(value)) {
+        value = 0;
+    }
+
+    wasmu_FloatConverter converter;
+
+    switch (type) {
+        case WASMU_VALUE_TYPE_F32:
+        default:
+            converter.asF32 = value;
+            wasmu_pushInt(context, 4, converter.asI32);
+            break;
+
+        case WASMU_VALUE_TYPE_F64:
+            converter.asF64 = value;
+            wasmu_pushInt(context, 8, converter.asI64);
+            break;
+    }
+
+}
+
+wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {
+    wasmu_FloatConverter converter;
+
+    switch (type) {
+        case WASMU_VALUE_TYPE_F32:
+        default:
+            converter.asI32 = wasmu_popInt(context, 4);
+            return converter.asF32;
+
+        case WASMU_VALUE_TYPE_F64:
+            converter.asI64 = wasmu_popInt(context, 8);
+            return converter.asF64;
+    }
 }
