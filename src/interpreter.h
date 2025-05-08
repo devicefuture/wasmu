@@ -971,6 +971,42 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_F32_CONVERT_I32_S:
+        case WASMU_OP_F32_CONVERT_I32_U:
+        case WASMU_OP_F32_CONVERT_I64_S:
+        case WASMU_OP_F32_CONVERT_I64_U:
+        case WASMU_OP_F64_CONVERT_I32_S:
+        case WASMU_OP_F64_CONVERT_I32_U:
+        case WASMU_OP_F64_CONVERT_I64_S:
+        case WASMU_OP_F64_CONVERT_I64_U:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType objectType = wasmu_getOpcodeObjectType(opcode);
+            wasmu_Count objectSize = wasmu_getValueTypeSize(objectType);
+            wasmu_Float floatValue;
+
+            if (wasmu_opcodeIsSigned(opcode)) {
+                wasmu_Int intValue = wasmu_popInt(context, objectSize); WASMU_ASSERT_POP_TYPE(objectType);
+
+                WASMU_DEBUG_LOG("Convert - intValue: %d, objectSize: %d, signed: 1", intValue, objectSize);
+
+                floatValue = (wasmu_Float)intValue;
+            } else {
+                wasmu_UInt intValue = wasmu_popInt(context, objectSize); WASMU_ASSERT_POP_TYPE(objectType);
+
+                WASMU_DEBUG_LOG("Convert - intValue: %d, objectSize: %d, signed: 0", intValue, objectSize);
+
+                floatValue = (wasmu_Float)intValue;
+            }
+
+            wasmu_pushFloat(context, type, floatValue);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
         default:
             WASMU_DEBUG_LOG("Opcode not implemented");
             context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;

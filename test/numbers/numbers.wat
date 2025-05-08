@@ -14,4 +14,18 @@
         f32.sub
         i64.trunc_f32_s
     )
+    (func (export "divF32S") (result i64)
+        i64.const -20
+        f32.convert_i64_s
+        f32.const 4
+        f32.div
+        i64.trunc_f32_s
+    )
+    (func (export "divF32U") (result i64)
+        i64.const -20
+        f32.convert_i64_u
+        f32.const 4
+        f32.div
+        i64.trunc_f32_s
+    )
 )

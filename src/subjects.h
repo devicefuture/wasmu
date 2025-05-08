@@ -169,9 +169,9 @@ wasmu_ValueType wasmu_getOpcodeObjectType(wasmu_Opcode opcode) {
         case WASMU_OP_I64_EXTEND_I32_U:
         case WASMU_OP_F32_CONVERT_I32_S:
         case WASMU_OP_F32_CONVERT_I32_U:
-        case WASMU_OP_F32_REINTERPRET_I32:
         case WASMU_OP_F64_CONVERT_I32_S:
         case WASMU_OP_F64_CONVERT_I32_U:
+        case WASMU_OP_F32_REINTERPRET_I32:
             return WASMU_VALUE_TYPE_I32;
 
         case WASMU_OP_I32_WRAP_I64:

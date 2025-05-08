@@ -61,5 +61,37 @@ TEST {
     ASSERT(wasmu_popInt(context, 8) == -4, "Result is not -4");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
 
+    printf("Get function: \"divF32S\"\n");
+
+    wasmu_Function* divF32S = wasmu_getExportedFunction(module, "divF32S");
+
+    ASSERT(divF32S, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, divF32S), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 8) == -5, "Result is not -5");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
+
+    printf("Get function: \"divF32U\"\n");
+
+    wasmu_Function* divF32U = wasmu_getExportedFunction(module, "divF32U");
+
+    ASSERT(divF32U, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, divF32U), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 8) == 4611686018427387904, "Result is not 4611686018427387904");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
+
     PASS();
 }
