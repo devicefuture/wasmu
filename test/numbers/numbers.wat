@@ -32,4 +32,12 @@
         i64.const 0xFEDCBA9876543210
         i32.wrap_i64
     )
+    (func (export "extendS") (result i64)
+        i32.const -10
+        i64.extend_i32_s
+    )
+    (func (export "extendU") (result i64)
+        i32.const -10
+        i64.extend_i32_u
+    )
 )

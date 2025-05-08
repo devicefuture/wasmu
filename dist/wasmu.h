@@ -3364,7 +3364,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_Int value = wasmu_popInt(context, 8); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I64);
+            wasmu_I64 value = wasmu_popInt(context, 8); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I64);
 
             WASMU_DEBUG_LOG("Wrap I64 into I32 - value: %ld", value);
 
@@ -3404,6 +3404,21 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             }
 
             wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_I64_EXTEND_I32_S:
+        case WASMU_OP_I64_EXTEND_I32_U:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_I32 value = wasmu_popInt(context, 4); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_I32);
+
+            WASMU_DEBUG_LOG("Extend I32 into I64 - value: %d, signed: %d", value, wasmu_opcodeIsSigned(opcode));
+
+            wasmu_pushInt(context, 4, value);
+            wasmu_pushInt(context, 4, wasmu_opcodeIsSigned(opcode) && value < 0 ? -1 : 0);
 
             break;
         }

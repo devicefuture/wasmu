@@ -109,5 +109,37 @@ TEST {
     ASSERT(wasmu_popInt(context, 4) == 0x76543210, "Result is not 0x76543210");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
 
+    printf("Get function: \"extendS\"\n");
+
+    wasmu_Function* extendS = wasmu_getExportedFunction(module, "extendS");
+
+    ASSERT(extendS, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, extendS), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 8) == -10, "Result is not -10");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
+
+    printf("Get function: \"extendS\"\n");
+
+    wasmu_Function* extendU = wasmu_getExportedFunction(module, "extendU");
+
+    ASSERT(extendU, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, extendU), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 8) == 4294967286, "Result is not 4294967286");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
+
     PASS();
 }
