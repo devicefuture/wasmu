@@ -125,7 +125,7 @@ TEST {
     ASSERT(wasmu_popInt(context, 8) == -10, "Result is not -10");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
 
-    printf("Get function: \"extendS\"\n");
+    printf("Get function: \"extendU\"\n");
 
     wasmu_Function* extendU = wasmu_getExportedFunction(module, "extendU");
 
@@ -140,6 +140,40 @@ TEST {
 
     ASSERT(wasmu_popInt(context, 8) == 4294967286, "Result is not 4294967286");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
+
+    printf("Get function: \"demote\"\n");
+
+    wasmu_Function* demote = wasmu_getExportedFunction(module, "demote");
+
+    ASSERT(demote, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, demote), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    wasmu_Float value = wasmu_popFloat(context, WASMU_VALUE_TYPE_F32);
+
+    ASSERT(value == (wasmu_F32)123.456789, "Result is not 123.456789");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_F32, "Result type is not F32");
+
+    printf("Get function: \"promote\"\n");
+
+    wasmu_Function* promote = wasmu_getExportedFunction(module, "promote");
+
+    ASSERT(promote, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, promote), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popFloat(context, WASMU_VALUE_TYPE_F64) == (wasmu_F32)123.456789, "Result is not 123.456789");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_F64, "Result type is not F32");
 
     PASS();
 }

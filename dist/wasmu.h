@@ -3459,6 +3459,34 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             break;
         }
 
+        case WASMU_OP_F32_DEMOTE_F64:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Float value = wasmu_popFloat(context, WASMU_VALUE_TYPE_F64); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_F64);
+
+            WASMU_DEBUG_LOG("Demote F64 into F32 - value: %f", value);
+
+            wasmu_pushFloat(context, WASMU_VALUE_TYPE_F32, value);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_F32);
+
+            break;
+        }
+
+        case WASMU_OP_F64_PROMOTE_F32:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_Float value = wasmu_popFloat(context, WASMU_VALUE_TYPE_F32); WASMU_ASSERT_POP_TYPE(WASMU_VALUE_TYPE_F32);
+
+            WASMU_DEBUG_LOG("Promote F32 into F64 - value: %f", value);
+
+            wasmu_pushFloat(context, WASMU_VALUE_TYPE_F64, value);
+            wasmu_pushType(context, WASMU_VALUE_TYPE_F64);
+
+            break;
+        }
+
         default:
             WASMU_DEBUG_LOG("Opcode not implemented");
             context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;

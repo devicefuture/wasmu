@@ -40,4 +40,12 @@
         i32.const -10
         i64.extend_i32_u
     )
+    (func (export "demote") (result f32)
+        f64.const 123.456789
+        f32.demote_f64
+    )
+    (func (export "promote") (result f64)
+        f32.const 123.456789
+        f64.promote_f32
+    )
 )
