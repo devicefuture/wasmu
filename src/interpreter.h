@@ -961,8 +961,6 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             if (wasmu_opcodeIsSigned(opcode)) {
                 wasmu_Int intValue = (wasmu_Int)floatValue;
 
-                printf("Push %d\n", intValue);
-
                 wasmu_pushInt(context, size, intValue);
             } else {
                 wasmu_pushInt(context, size, (wasmu_UInt)floatValue);
