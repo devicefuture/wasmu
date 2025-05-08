@@ -232,6 +232,7 @@ wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
 wasmu_U8 wasmu_readNext(wasmu_Module* module);
 wasmu_UInt wasmu_readUInt(wasmu_Module* module);
 wasmu_Int wasmu_readInt(wasmu_Module* module);
+wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type);
 wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b);

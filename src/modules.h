@@ -86,6 +86,24 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
     return result;
 }
 
+wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type) {
+    wasmu_Count size = wasmu_getValueTypeSize(type);
+    wasmu_UInt rawValue = 0;
+
+    for (wasmu_Count i = 0; i < size; i++) {
+        rawValue |= (wasmu_UInt)WASMU_NEXT() << (i * 8);
+    }
+
+    switch (type) {
+        case WASMU_VALUE_TYPE_F32:
+        default:
+            return ((wasmu_FloatConverter) {.asI32 = rawValue}).asF32;
+
+        case WASMU_VALUE_TYPE_F64:
+            return ((wasmu_FloatConverter) {.asI64 = rawValue}).asF64;
+    }
+}
+
 wasmu_String wasmu_readString(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(size);

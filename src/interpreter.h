@@ -658,8 +658,6 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_CONST:
         case WASMU_OP_I64_CONST:
-        case WASMU_OP_F32_CONST:
-        case WASMU_OP_F64_CONST:
         {
             wasmu_Int value = wasmu_readInt(module);
 
@@ -671,6 +669,22 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Const - value: %ld", value);
 
             wasmu_pushInt(context, size, value);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_F32_CONST:
+        case WASMU_OP_F64_CONST:
+        {
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Float value = wasmu_readFloat(module, type);
+
+            WASMU_FF_SKIP_HERE();
+
+            WASMU_DEBUG_LOG("Const - value: %f", value);
+
+            wasmu_pushFloat(context, type, value);
             wasmu_pushType(context, type);
 
             break;
@@ -918,6 +932,42 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Rotate right - value: %ld, shift: %ld (result: %ld)", value, shift, result);
 
             wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_I32_TRUNC_F32_S:
+        case WASMU_OP_I32_TRUNC_F32_U:
+        case WASMU_OP_I64_TRUNC_F32_S:
+        case WASMU_OP_I64_TRUNC_F32_U:
+        case WASMU_OP_I32_TRUNC_F64_S:
+        case WASMU_OP_I32_TRUNC_F64_U:
+        case WASMU_OP_I64_TRUNC_F64_S:
+        case WASMU_OP_I64_TRUNC_F64_U:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+            wasmu_ValueType objectType = wasmu_getOpcodeObjectType(opcode);
+            wasmu_Float floatValue = wasmu_popFloat(context, objectType); WASMU_ASSERT_POP_TYPE(objectType);
+
+            WASMU_DEBUG_LOG(
+                "Truncate - floatValue: %f, size: %d, signed: %d",
+                floatValue, size, wasmu_opcodeIsSigned(opcode)
+            );
+
+            if (wasmu_opcodeIsSigned(opcode)) {
+                wasmu_Int intValue = (wasmu_Int)floatValue;
+
+                printf("Push %d\n", intValue);
+
+                wasmu_pushInt(context, size, intValue);
+            } else {
+                wasmu_pushInt(context, size, (wasmu_UInt)floatValue);
+            }
+
             wasmu_pushType(context, type);
 
             break;

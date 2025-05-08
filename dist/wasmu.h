@@ -242,6 +242,19 @@ wasmu_Bool wasmu_isInfinity(wasmu_Float value) {
     return !wasmu_isNan(value) && wasmu_isNan(value - value);
 }
 
+void wasmu_signExtend(wasmu_Int* value, wasmu_Count bytes) {
+    if (bytes == sizeof(wasmu_Int)) {
+        return;
+    }
+
+    if (*value & ((wasmu_Int)1 << ((bytes * 8) - 1))) {
+        wasmu_UInt mask = -1;
+
+        mask <<= bytes * 8;
+        *value |= mask;
+    }
+}
+
 // src/opcodes.h
 
 typedef enum {
@@ -655,6 +668,7 @@ wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
 wasmu_U8 wasmu_readNext(wasmu_Module* module);
 wasmu_UInt wasmu_readUInt(wasmu_Module* module);
 wasmu_Int wasmu_readInt(wasmu_Module* module);
+wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type);
 wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b);
@@ -850,6 +864,84 @@ wasmu_ValueType wasmu_getOpcodeSubjectType(wasmu_Opcode opcode) {
     }
 }
 
+wasmu_ValueType wasmu_getOpcodeObjectType(wasmu_Opcode opcode) {
+    switch (opcode) {
+        case WASMU_OP_I64_EXTEND_I32_S:
+        case WASMU_OP_I64_EXTEND_I32_U:
+        case WASMU_OP_F32_CONVERT_I32_S:
+        case WASMU_OP_F32_CONVERT_I32_U:
+        case WASMU_OP_F32_REINTERPRET_I32:
+        case WASMU_OP_F64_CONVERT_I32_S:
+        case WASMU_OP_F64_CONVERT_I32_U:
+            return WASMU_VALUE_TYPE_I32;
+
+        case WASMU_OP_I32_WRAP_I64:
+        case WASMU_OP_F32_CONVERT_I64_S:
+        case WASMU_OP_F32_CONVERT_I64_U:
+        case WASMU_OP_F64_CONVERT_I64_S:
+        case WASMU_OP_F64_CONVERT_I64_U:
+        case WASMU_OP_F64_REINTERPRET_I64:
+            return WASMU_VALUE_TYPE_I64;
+
+        case WASMU_OP_I32_TRUNC_F32_S:
+        case WASMU_OP_I32_TRUNC_F32_U:
+        case WASMU_OP_I64_TRUNC_F32_S:
+        case WASMU_OP_I64_TRUNC_F32_U:
+        case WASMU_OP_I32_REINTERPRET_F32:
+        case WASMU_OP_F64_PROMOTE_F32:
+            return WASMU_VALUE_TYPE_F32;
+
+        case WASMU_OP_I32_TRUNC_F64_S:
+        case WASMU_OP_I32_TRUNC_F64_U:
+        case WASMU_OP_I64_TRUNC_F64_S:
+        case WASMU_OP_I64_TRUNC_F64_U:
+        case WASMU_OP_I64_REINTERPRET_F64:
+        case WASMU_OP_F32_DEMOTE_F64:
+            return WASMU_VALUE_TYPE_F64;
+
+
+        default:
+            return WASMU_VALUE_TYPE_I32;
+    }
+}
+
+wasmu_Bool wasmu_opcodeIsSigned(wasmu_Opcode opcode) {
+    switch (opcode) {
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I32_LT_S:
+        case WASMU_OP_I32_GT_S:
+        case WASMU_OP_I32_LE_S:
+        case WASMU_OP_I32_GE_S:
+        case WASMU_OP_I32_DIV_S:
+        case WASMU_OP_I32_REM_S:
+        case WASMU_OP_I32_SHR_S:
+        case WASMU_OP_I32_TRUNC_F32_S:
+        case WASMU_OP_I32_TRUNC_F64_S:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD32_S:
+        case WASMU_OP_I64_LT_S:
+        case WASMU_OP_I64_GT_S:
+        case WASMU_OP_I64_LE_S:
+        case WASMU_OP_I64_GE_S:
+        case WASMU_OP_I64_DIV_S:
+        case WASMU_OP_I64_REM_S:
+        case WASMU_OP_I64_SHR_S:
+        case WASMU_OP_I64_EXTEND_I32_S:
+        case WASMU_OP_I64_TRUNC_F32_S:
+        case WASMU_OP_I64_TRUNC_F64_S:
+        case WASMU_OP_F32_CONVERT_I32_S:
+        case WASMU_OP_F32_CONVERT_I64_S:
+        case WASMU_OP_F64_CONVERT_I32_S:
+        case WASMU_OP_F64_CONVERT_I64_S:
+            return WASMU_TRUE;
+
+        default:
+            return WASMU_FALSE;
+    }
+}
+
 // src/contexts.h
 
 wasmu_Context* wasmu_newContext() {
@@ -979,6 +1071,24 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
     }
 
     return result;
+}
+
+wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type) {
+    wasmu_Count size = wasmu_getValueTypeSize(type);
+    wasmu_UInt rawValue = 0;
+
+    for (wasmu_Count i = 0; i < size; i++) {
+        rawValue |= (wasmu_UInt)WASMU_NEXT() << (i * 8);
+    }
+
+    switch (type) {
+        case WASMU_VALUE_TYPE_F32:
+        default:
+            return ((wasmu_FloatConverter) {.asI32 = rawValue}).asF32;
+
+        case WASMU_VALUE_TYPE_F64:
+            return ((wasmu_FloatConverter) {.asI64 = rawValue}).asF64;
+    }
 }
 
 wasmu_String wasmu_readString(wasmu_Module* module) {
@@ -2024,14 +2134,7 @@ wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_
         value |= (wasmu_Int)(stack->data[position + i]) << (i * 8);
     }
 
-    if (value & ((wasmu_Int)1 << ((bytes * 8) - 1))) {
-        // Sign-extend to 64-bit int
-
-        wasmu_UInt mask = -1;
-
-        mask <<= bytes * 8;
-        value |= mask;
-    }
+    wasmu_signExtend(&value, bytes);
 
     return value;
 }
@@ -2088,7 +2191,6 @@ void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float v
             wasmu_pushInt(context, 8, converter.asI64);
             break;
     }
-
 }
 
 wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {
@@ -2979,8 +3081,6 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_I32_CONST:
         case WASMU_OP_I64_CONST:
-        case WASMU_OP_F32_CONST:
-        case WASMU_OP_F64_CONST:
         {
             wasmu_Int value = wasmu_readInt(module);
 
@@ -2992,6 +3092,22 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Const - value: %ld", value);
 
             wasmu_pushInt(context, size, value);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_F32_CONST:
+        case WASMU_OP_F64_CONST:
+        {
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Float value = wasmu_readFloat(module, type);
+
+            WASMU_FF_SKIP_HERE();
+
+            WASMU_DEBUG_LOG("Const - value: %f", value);
+
+            wasmu_pushFloat(context, type, value);
             wasmu_pushType(context, type);
 
             break;
@@ -3239,6 +3355,42 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             WASMU_DEBUG_LOG("Rotate right - value: %ld, shift: %ld (result: %ld)", value, shift, result);
 
             wasmu_pushInt(context, size, result);
+            wasmu_pushType(context, type);
+
+            break;
+        }
+
+        case WASMU_OP_I32_TRUNC_F32_S:
+        case WASMU_OP_I32_TRUNC_F32_U:
+        case WASMU_OP_I64_TRUNC_F32_S:
+        case WASMU_OP_I64_TRUNC_F32_U:
+        case WASMU_OP_I32_TRUNC_F64_S:
+        case WASMU_OP_I32_TRUNC_F64_U:
+        case WASMU_OP_I64_TRUNC_F64_S:
+        case WASMU_OP_I64_TRUNC_F64_U:
+        {
+            WASMU_FF_SKIP_HERE();
+
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_Count size = wasmu_getValueTypeSize(type);
+            wasmu_ValueType objectType = wasmu_getOpcodeObjectType(opcode);
+            wasmu_Float floatValue = wasmu_popFloat(context, objectType); WASMU_ASSERT_POP_TYPE(objectType);
+
+            WASMU_DEBUG_LOG(
+                "Truncate - floatValue: %f, size: %d, signed: %d",
+                floatValue, size, wasmu_opcodeIsSigned(opcode)
+            );
+
+            if (wasmu_opcodeIsSigned(opcode)) {
+                wasmu_Int intValue = (wasmu_Int)floatValue;
+
+                printf("Push %d\n", intValue);
+
+                wasmu_pushInt(context, size, intValue);
+            } else {
+                wasmu_pushInt(context, size, (wasmu_UInt)floatValue);
+            }
+
             wasmu_pushType(context, type);
 
             break;

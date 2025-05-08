@@ -162,3 +162,81 @@ wasmu_ValueType wasmu_getOpcodeSubjectType(wasmu_Opcode opcode) {
             return WASMU_VALUE_TYPE_I32;
     }
 }
+
+wasmu_ValueType wasmu_getOpcodeObjectType(wasmu_Opcode opcode) {
+    switch (opcode) {
+        case WASMU_OP_I64_EXTEND_I32_S:
+        case WASMU_OP_I64_EXTEND_I32_U:
+        case WASMU_OP_F32_CONVERT_I32_S:
+        case WASMU_OP_F32_CONVERT_I32_U:
+        case WASMU_OP_F32_REINTERPRET_I32:
+        case WASMU_OP_F64_CONVERT_I32_S:
+        case WASMU_OP_F64_CONVERT_I32_U:
+            return WASMU_VALUE_TYPE_I32;
+
+        case WASMU_OP_I32_WRAP_I64:
+        case WASMU_OP_F32_CONVERT_I64_S:
+        case WASMU_OP_F32_CONVERT_I64_U:
+        case WASMU_OP_F64_CONVERT_I64_S:
+        case WASMU_OP_F64_CONVERT_I64_U:
+        case WASMU_OP_F64_REINTERPRET_I64:
+            return WASMU_VALUE_TYPE_I64;
+
+        case WASMU_OP_I32_TRUNC_F32_S:
+        case WASMU_OP_I32_TRUNC_F32_U:
+        case WASMU_OP_I64_TRUNC_F32_S:
+        case WASMU_OP_I64_TRUNC_F32_U:
+        case WASMU_OP_I32_REINTERPRET_F32:
+        case WASMU_OP_F64_PROMOTE_F32:
+            return WASMU_VALUE_TYPE_F32;
+
+        case WASMU_OP_I32_TRUNC_F64_S:
+        case WASMU_OP_I32_TRUNC_F64_U:
+        case WASMU_OP_I64_TRUNC_F64_S:
+        case WASMU_OP_I64_TRUNC_F64_U:
+        case WASMU_OP_I64_REINTERPRET_F64:
+        case WASMU_OP_F32_DEMOTE_F64:
+            return WASMU_VALUE_TYPE_F64;
+
+
+        default:
+            return WASMU_VALUE_TYPE_I32;
+    }
+}
+
+wasmu_Bool wasmu_opcodeIsSigned(wasmu_Opcode opcode) {
+    switch (opcode) {
+        case WASMU_OP_I32_LOAD8_S:
+        case WASMU_OP_I32_LOAD16_S:
+        case WASMU_OP_I32_LT_S:
+        case WASMU_OP_I32_GT_S:
+        case WASMU_OP_I32_LE_S:
+        case WASMU_OP_I32_GE_S:
+        case WASMU_OP_I32_DIV_S:
+        case WASMU_OP_I32_REM_S:
+        case WASMU_OP_I32_SHR_S:
+        case WASMU_OP_I32_TRUNC_F32_S:
+        case WASMU_OP_I32_TRUNC_F64_S:
+        case WASMU_OP_I64_LOAD8_S:
+        case WASMU_OP_I64_LOAD16_S:
+        case WASMU_OP_I64_LOAD32_S:
+        case WASMU_OP_I64_LT_S:
+        case WASMU_OP_I64_GT_S:
+        case WASMU_OP_I64_LE_S:
+        case WASMU_OP_I64_GE_S:
+        case WASMU_OP_I64_DIV_S:
+        case WASMU_OP_I64_REM_S:
+        case WASMU_OP_I64_SHR_S:
+        case WASMU_OP_I64_EXTEND_I32_S:
+        case WASMU_OP_I64_TRUNC_F32_S:
+        case WASMU_OP_I64_TRUNC_F64_S:
+        case WASMU_OP_F32_CONVERT_I32_S:
+        case WASMU_OP_F32_CONVERT_I64_S:
+        case WASMU_OP_F64_CONVERT_I32_S:
+        case WASMU_OP_F64_CONVERT_I64_S:
+            return WASMU_TRUE;
+
+        default:
+            return WASMU_FALSE;
+    }
+}

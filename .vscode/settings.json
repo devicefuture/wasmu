@@ -12,7 +12,8 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "random": "cpp"
     },
     "search.exclude": {
         "**/dist": true

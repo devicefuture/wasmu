@@ -254,14 +254,7 @@ wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_
         value |= (wasmu_Int)(stack->data[position + i]) << (i * 8);
     }
 
-    if (value & ((wasmu_Int)1 << ((bytes * 8) - 1))) {
-        // Sign-extend to 64-bit int
-
-        wasmu_UInt mask = -1;
-
-        mask <<= bytes * 8;
-        value |= mask;
-    }
+    wasmu_signExtend(&value, bytes);
 
     return value;
 }
@@ -318,7 +311,6 @@ void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float v
             wasmu_pushInt(context, 8, converter.asI64);
             break;
     }
-
 }
 
 wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {

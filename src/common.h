@@ -179,3 +179,16 @@ wasmu_Bool wasmu_isNan(wasmu_Float value) {
 wasmu_Bool wasmu_isInfinity(wasmu_Float value) {
     return !wasmu_isNan(value) && wasmu_isNan(value - value);
 }
+
+void wasmu_signExtend(wasmu_Int* value, wasmu_Count bytes) {
+    if (bytes == sizeof(wasmu_Int)) {
+        return;
+    }
+
+    if (*value & ((wasmu_Int)1 << ((bytes * 8) - 1))) {
+        wasmu_UInt mask = -1;
+
+        mask <<= bytes * 8;
+        *value |= mask;
+    }
+}
