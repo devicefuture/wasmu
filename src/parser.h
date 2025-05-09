@@ -172,8 +172,14 @@ wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
         WASMU_ADD_ENTRY(module->tables, module->tablesCount, table);
 
         WASMU_NEXT(); // Table type — just assume it's a `funcref` for now
-        WASMU_NEXT(); // Limits flags — not required for now
+        
+        wasmu_U8 limitsFlag = WASMU_NEXT();
+
         WASMU_NEXT(); // Initial size — also not required; table can grow when needed
+
+        if (limitsFlag == 0x01) {
+            WASMU_NEXT(); // Maximum size — also not required
+        }
 
         WASMU_DEBUG_LOG("Add table");
     }
@@ -244,29 +250,17 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
         moduleExport.name = wasmu_readString(module);
         moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        switch (moduleExport.type) {
-            case WASMU_EXPORT_TYPE_FUNCTION:
-            {
-                WASMU_DEBUG_LOG("Export type: function");
+        printf("Export type: %02x\n", moduleExport.type);
 
-                moduleExport.data.asFunctionIndex = wasmu_readUInt(module);
+        moduleExport.index = wasmu_readUInt(module);
 
-                #ifdef WASMU_DEBUG
-                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
+        #ifdef WASMU_DEBUG
+            wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
 
-                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, moduleExport.data.asFunctionIndex);
+            WASMU_DEBUG_LOG("Add export - name: \"%s\", index: %d", nameChars, moduleExport.index);
 
-                    WASMU_FREE(nameChars);
-                #endif
-
-                break;
-            }
-
-            default:
-                WASMU_DEBUG_LOG("Export type not implemented");
-                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
-                return WASMU_FALSE;
-        }
+            WASMU_FREE(nameChars);
+        #endif
 
         WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
     }

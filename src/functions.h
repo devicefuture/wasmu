@@ -49,7 +49,7 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
             return WASMU_FALSE;
         }
 
-        functionIndex = moduleImport->data.asFunctionIndex;
+        functionIndex = moduleImport->index;
         function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 
         if (!function) {

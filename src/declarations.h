@@ -47,7 +47,10 @@ typedef enum wasmu_SignatureType {
 } wasmu_SignatureType;
 
 typedef enum wasmu_ExportType {
-    WASMU_EXPORT_TYPE_FUNCTION = 0x00
+    WASMU_EXPORT_TYPE_FUNCTION = 0x00,
+    WASMU_EXPORT_TYPE_TABLE = 0x01,
+    WASMU_EXPORT_TYPE_MEMORY = 0x02,
+    WASMU_EXPORT_TYPE_GLOBAL = 0x03
 } wasmu_ExportType;
 
 typedef struct wasmu_String {
@@ -178,9 +181,7 @@ typedef struct wasmu_Import {
     wasmu_String name;
     wasmu_ExportType type;
     wasmu_Count resolvedModuleIndex;
-    union {
-        wasmu_Count asFunctionIndex;
-    } data;
+    wasmu_Count index;
 } wasmu_Import;
 
 typedef wasmu_Bool (*wasmu_NativeFunction)(wasmu_Context* context);
@@ -211,9 +212,7 @@ typedef struct wasmu_Memory {
 typedef struct wasmu_Export {
     wasmu_String name;
     wasmu_ExportType type;
-    union {
-        wasmu_Count asFunctionIndex;
-    } data;
+    wasmu_Count index;
 } wasmu_Export;
 
 typedef union wasmu_FloatConverter {

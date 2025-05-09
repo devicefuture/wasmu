@@ -174,7 +174,7 @@ wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* n
         wasmu_Export moduleExport = module->exports[i];
 
         if (moduleExport.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(moduleExport.name, name)) {
-            return moduleExport.data.asFunctionIndex;
+            return moduleExport.index;
         }
     }
 
@@ -205,7 +205,7 @@ wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* res
                 goto exit;
             }
 
-            import->data.asFunctionIndex = functionIndex;
+            import->index = functionIndex;
 
             break;
         }
@@ -273,7 +273,7 @@ wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, w
 
     moduleExport.name = wasmu_charsToString(name);
     moduleExport.type = WASMU_EXPORT_TYPE_FUNCTION;
-    moduleExport.data.asFunctionIndex = module->functionsCount - 1;
+    moduleExport.index = module->functionsCount - 1;
 
     WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
 

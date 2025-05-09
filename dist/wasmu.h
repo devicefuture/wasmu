@@ -483,7 +483,10 @@ typedef enum wasmu_SignatureType {
 } wasmu_SignatureType;
 
 typedef enum wasmu_ExportType {
-    WASMU_EXPORT_TYPE_FUNCTION = 0x00
+    WASMU_EXPORT_TYPE_FUNCTION = 0x00,
+    WASMU_EXPORT_TYPE_TABLE = 0x01,
+    WASMU_EXPORT_TYPE_MEMORY = 0x02,
+    WASMU_EXPORT_TYPE_GLOBAL = 0x03
 } wasmu_ExportType;
 
 typedef struct wasmu_String {
@@ -614,9 +617,7 @@ typedef struct wasmu_Import {
     wasmu_String name;
     wasmu_ExportType type;
     wasmu_Count resolvedModuleIndex;
-    union {
-        wasmu_Count asFunctionIndex;
-    } data;
+    wasmu_Count index;
 } wasmu_Import;
 
 typedef wasmu_Bool (*wasmu_NativeFunction)(wasmu_Context* context);
@@ -647,9 +648,7 @@ typedef struct wasmu_Memory {
 typedef struct wasmu_Export {
     wasmu_String name;
     wasmu_ExportType type;
-    union {
-        wasmu_Count asFunctionIndex;
-    } data;
+    wasmu_Count index;
 } wasmu_Export;
 
 typedef union wasmu_FloatConverter {
@@ -1161,7 +1160,7 @@ wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* n
         wasmu_Export moduleExport = module->exports[i];
 
         if (moduleExport.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(moduleExport.name, name)) {
-            return moduleExport.data.asFunctionIndex;
+            return moduleExport.index;
         }
     }
 
@@ -1192,7 +1191,7 @@ wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* res
                 goto exit;
             }
 
-            import->data.asFunctionIndex = functionIndex;
+            import->index = functionIndex;
 
             break;
         }
@@ -1260,7 +1259,7 @@ wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, w
 
     moduleExport.name = wasmu_charsToString(name);
     moduleExport.type = WASMU_EXPORT_TYPE_FUNCTION;
-    moduleExport.data.asFunctionIndex = module->functionsCount - 1;
+    moduleExport.index = module->functionsCount - 1;
 
     WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
 
@@ -1443,8 +1442,14 @@ wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
         WASMU_ADD_ENTRY(module->tables, module->tablesCount, table);
 
         WASMU_NEXT(); // Table type — just assume it's a `funcref` for now
-        WASMU_NEXT(); // Limits flags — not required for now
+        
+        wasmu_U8 limitsFlag = WASMU_NEXT();
+
         WASMU_NEXT(); // Initial size — also not required; table can grow when needed
+
+        if (limitsFlag == 0x01) {
+            WASMU_NEXT(); // Maximum size — also not required
+        }
 
         WASMU_DEBUG_LOG("Add table");
     }
@@ -1515,29 +1520,17 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
         moduleExport.name = wasmu_readString(module);
         moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        switch (moduleExport.type) {
-            case WASMU_EXPORT_TYPE_FUNCTION:
-            {
-                WASMU_DEBUG_LOG("Export type: function");
+        printf("Export type: %02x\n", moduleExport.type);
 
-                moduleExport.data.asFunctionIndex = wasmu_readUInt(module);
+        moduleExport.index = wasmu_readUInt(module);
 
-                #ifdef WASMU_DEBUG
-                    wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
+        #ifdef WASMU_DEBUG
+            wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
 
-                    WASMU_DEBUG_LOG("Add function export - name: \"%s\", functionIndex: %d", nameChars, moduleExport.data.asFunctionIndex);
+            WASMU_DEBUG_LOG("Add export - name: \"%s\", index: %d", nameChars, moduleExport.index);
 
-                    WASMU_FREE(nameChars);
-                #endif
-
-                break;
-            }
-
-            default:
-                WASMU_DEBUG_LOG("Export type not implemented");
-                module->context->errorState = WASMU_ERROR_STATE_NOT_IMPLEMENTED;
-                return WASMU_FALSE;
-        }
+            WASMU_FREE(nameChars);
+        #endif
 
         WASMU_ADD_ENTRY(module->exports, module->exportsCount, moduleExport);
     }
@@ -2261,7 +2254,7 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
             return WASMU_FALSE;
         }
 
-        functionIndex = moduleImport->data.asFunctionIndex;
+        functionIndex = moduleImport->index;
         function = WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 
         if (!function) {

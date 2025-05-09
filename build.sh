@@ -47,7 +47,13 @@ for testPath in test/*/; do
 
     mkdir -p test/$test/build
 
-    $CC -Idist/ test/$test/$test.c -DWASMU_DEBUG -DTEST_NAME=\"$test\" -o test/$test/build/$test
+    DEBUG_FLAG=-DWASMU_DEBUG
+
+    if [ -f test/$test/no-debug ]; then
+        DEBUG_FLAG=
+    fi
+
+    $CC -Idist/ test/$test/$test.c $DEBUG_FLAG -DTEST_NAME=\"$test\" -o test/$test/build/$test
 
     if [ -f test/$test/script.sh ]; then
         chmod +x test/$test/script.sh
