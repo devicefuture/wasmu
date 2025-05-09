@@ -35,6 +35,21 @@
         break; \
     }
 
+#define WASMU_FLOAT_UNARY_FN(function) { \
+        WASMU_FF_SKIP_HERE(); \
+        \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        \
+        wasmu_Float value = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        \
+        WASMU_DEBUG_LOG("Function " #function " - value: %f (result: %f)", value, function(value)); \
+        \
+        wasmu_pushFloat(context, type, function(value)); \
+        wasmu_pushType(context, type); \
+        \
+        break; \
+    }
+
 wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail) {
     WASMU_DEBUG_LOG("Begin fast forward - targetOpcode: 0x%02x", targetOpcode);
 
@@ -936,6 +951,14 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             break;
         }
+
+        case WASMU_OP_F32_ABS:
+        case WASMU_OP_F64_ABS:
+            WASMU_FLOAT_UNARY_FN(wasmu_abs)
+
+        case WASMU_OP_F32_NEG:
+        case WASMU_OP_F64_NEG:
+            WASMU_FLOAT_UNARY_FN(wasmu_neg)
 
         case WASMU_OP_I32_WRAP_I64:
         {

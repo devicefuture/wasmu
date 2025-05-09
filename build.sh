@@ -35,6 +35,7 @@ include src/parser.h
 include src/memory.h
 include src/stacks.h
 include src/functions.h
+include src/maths.h
 include src/interpreter.h
 
 tee -a dist/wasmu.h > /dev/null << EOF

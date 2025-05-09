@@ -2419,6 +2419,16 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
     }
 }
 
+// src/maths.h
+
+wasmu_Float wasmu_abs(wasmu_Float value) {
+    return value < 0 ? value * -1 : value;
+}
+
+wasmu_Float wasmu_neg(wasmu_Float value) {
+    return value * -1;
+}
+
 // src/interpreter.h
 
 #define WASMU_FF_SKIP_HERE() if (context->fastForward) {break;}
@@ -2453,6 +2463,21 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
         WASMU_DEBUG_LOG("Operator " #operator " - a: %f, b: %f (result: %f)", a, b, a operator b); \
         \
         wasmu_pushFloat(context, type, a operator b); \
+        wasmu_pushType(context, type); \
+        \
+        break; \
+    }
+
+#define WASMU_FLOAT_UNARY_FN(function) { \
+        WASMU_FF_SKIP_HERE(); \
+        \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        \
+        wasmu_Float value = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        \
+        WASMU_DEBUG_LOG("Function " #function " - value: %f (result: %f)", value, function(value)); \
+        \
+        wasmu_pushFloat(context, type, function(value)); \
         wasmu_pushType(context, type); \
         \
         break; \
@@ -3359,6 +3384,14 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             break;
         }
+
+        case WASMU_OP_F32_ABS:
+        case WASMU_OP_F64_ABS:
+            WASMU_FLOAT_UNARY_FN(wasmu_abs)
+
+        case WASMU_OP_F32_NEG:
+        case WASMU_OP_F64_NEG:
+            WASMU_FLOAT_UNARY_FN(wasmu_neg)
 
         case WASMU_OP_I32_WRAP_I64:
         {
