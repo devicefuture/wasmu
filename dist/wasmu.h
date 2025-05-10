@@ -2422,6 +2422,26 @@ wasmu_Float wasmu_neg(wasmu_Float value) {
     return value * -1;
 }
 
+wasmu_Float wasmu_ceil(wasmu_Float value) {
+    wasmu_Int intValue = value;
+
+    return value - intValue == 0 ? value : intValue + 1;
+}
+
+wasmu_Float wasmu_floor(wasmu_Float value) {
+    wasmu_Int intValue = value;
+
+    return value == intValue || value >= 0 ? intValue : intValue - 1;
+}
+
+wasmu_Float wasmu_trunc(wasmu_Float value) {
+    return (wasmu_Int)value;
+}
+
+wasmu_Float wasmu_nearest(wasmu_Float value) {
+    return (wasmu_Int)(value < 0 ? value - 0.5 : value + 0.5);
+}
+
 // src/interpreter.h
 
 #define WASMU_FF_SKIP_HERE() if (context->fastForward) {break;}
@@ -3401,6 +3421,22 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F32_NEG:
         case WASMU_OP_F64_NEG:
             WASMU_FLOAT_UNARY_FN(wasmu_neg)
+
+        case WASMU_OP_F32_CEIL:
+        case WASMU_OP_F64_CEIL:
+            WASMU_FLOAT_UNARY_FN(wasmu_ceil)
+
+        case WASMU_OP_F32_FLOOR:
+        case WASMU_OP_F64_FLOOR:
+            WASMU_FLOAT_UNARY_FN(wasmu_floor)
+
+        case WASMU_OP_F32_TRUNC:
+        case WASMU_OP_F64_TRUNC:
+            WASMU_FLOAT_UNARY_FN(wasmu_trunc)
+
+        case WASMU_OP_F32_NEAREST:
+        case WASMU_OP_F64_NEAREST:
+            WASMU_FLOAT_UNARY_FN(wasmu_nearest)
 
         case WASMU_OP_I32_WRAP_I64:
         {
