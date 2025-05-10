@@ -250,7 +250,7 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
         moduleExport.name = wasmu_readString(module);
         moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        printf("Export type: %02x\n", moduleExport.type);
+        printf("Export type: 0x%02x\n", moduleExport.type);
 
         moduleExport.index = wasmu_readUInt(module);
 

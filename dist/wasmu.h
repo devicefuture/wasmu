@@ -1520,7 +1520,7 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
         moduleExport.name = wasmu_readString(module);
         moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        printf("Export type: %02x\n", moduleExport.type);
+        printf("Export type: 0x%02x\n", moduleExport.type);
 
         moduleExport.index = wasmu_readUInt(module);
 
@@ -2461,6 +2461,22 @@ wasmu_Float wasmu_neg(wasmu_Float value) {
         break; \
     }
 
+#define WASMU_FLOAT_LOGICAL_OPERATOR(operator) { \
+        WASMU_FF_SKIP_HERE(); \
+        \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        \
+        wasmu_Float b = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        wasmu_Float a = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        \
+        WASMU_DEBUG_LOG("Logical operator " #operator " - a: %f, b: %f (result: %d)", a, b, a operator b); \
+        \
+        wasmu_pushInt(context, 4, a operator b); \
+        wasmu_pushType(context, WASMU_VALUE_TYPE_I32); \
+        \
+        break; \
+    }
+
 #define WASMU_FLOAT_UNARY_FN(function) { \
         WASMU_FF_SKIP_HERE(); \
         \
@@ -3155,7 +3171,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_F32_EQ:
         case WASMU_OP_F64_EQ:
-            WASMU_FLOAT_OPERATOR(==)
+            WASMU_FLOAT_LOGICAL_OPERATOR(==)
 
         case WASMU_OP_I32_NE:
         case WASMU_OP_I64_NE:
@@ -3163,7 +3179,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_F32_NE:
         case WASMU_OP_F64_NE:
-            WASMU_FLOAT_OPERATOR(!=)
+            WASMU_FLOAT_LOGICAL_OPERATOR(!=)
 
         case WASMU_OP_I32_LT_S:
         case WASMU_OP_I64_LT_S:
@@ -3175,7 +3191,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_F32_LT:
         case WASMU_OP_F64_LT:
-            WASMU_FLOAT_OPERATOR(<)
+            WASMU_FLOAT_LOGICAL_OPERATOR(<)
 
         case WASMU_OP_I32_GT_S:
         case WASMU_OP_I64_GT_S:
@@ -3187,7 +3203,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_F32_GT:
         case WASMU_OP_F64_GT:
-            WASMU_FLOAT_OPERATOR(>)
+            WASMU_FLOAT_LOGICAL_OPERATOR(>)
 
         case WASMU_OP_I32_LE_S:
         case WASMU_OP_I64_LE_S:
@@ -3199,7 +3215,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_F32_LE:
         case WASMU_OP_F64_LE:
-            WASMU_FLOAT_OPERATOR(<=)
+            WASMU_FLOAT_LOGICAL_OPERATOR(<=)
 
         case WASMU_OP_I32_GE_S:
         case WASMU_OP_I64_GE_S:
@@ -3211,7 +3227,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
         case WASMU_OP_F32_GE:
         case WASMU_OP_F64_GE:
-            WASMU_FLOAT_OPERATOR(>=)
+            WASMU_FLOAT_LOGICAL_OPERATOR(>=)
 
         case WASMU_OP_I32_CLZ:
         case WASMU_OP_I64_CLZ:
