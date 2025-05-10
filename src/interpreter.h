@@ -66,6 +66,22 @@
         break; \
     }
 
+#define WASMU_FLOAT_BINARY_FN(function) { \
+        WASMU_FF_SKIP_HERE(); \
+        \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        \
+        wasmu_Float b = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        wasmu_Float a = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
+        \
+        WASMU_DEBUG_LOG("Function " #function " - a: %f, b: %f (result: %d)", a, b, function(a, b)); \
+        \
+        wasmu_pushFloat(context, type, function(a, b)); \
+        wasmu_pushType(context, type); \
+        \
+        break; \
+    }
+
 wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail) {
     WASMU_DEBUG_LOG("Begin fast forward - targetOpcode: 0x%02x", targetOpcode);
 
@@ -995,6 +1011,18 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F32_SQRT:
         case WASMU_OP_F64_SQRT:
             WASMU_FLOAT_UNARY_FN(wasmu_sqrt)
+
+        case WASMU_OP_F32_MIN:
+        case WASMU_OP_F64_MIN:
+            WASMU_FLOAT_BINARY_FN(wasmu_min)
+
+        case WASMU_OP_F32_MAX:
+        case WASMU_OP_F64_MAX:
+            WASMU_FLOAT_BINARY_FN(wasmu_max)
+
+        case WASMU_OP_F32_COPYSIGN:
+        case WASMU_OP_F64_COPYSIGN:
+            WASMU_FLOAT_BINARY_FN(wasmu_copysign)
 
         case WASMU_OP_I32_WRAP_I64:
         {

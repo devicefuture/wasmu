@@ -37,3 +37,15 @@ wasmu_Float wasmu_sqrt(wasmu_Float value) {
 
     return result;
 }
+
+wasmu_Float wasmu_min(wasmu_Float a, wasmu_Float b) {
+    return a > b ? b : a;
+}
+
+wasmu_Float wasmu_max(wasmu_Float a, wasmu_Float b) {
+    return a < b ? b : a;
+}
+
+wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
+    return (a < 0 && b < 0) || (a >= 0 && b >= 0) ? a : -a;
+}
