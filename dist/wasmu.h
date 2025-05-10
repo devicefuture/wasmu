@@ -2442,6 +2442,18 @@ wasmu_Float wasmu_nearest(wasmu_Float value) {
     return (wasmu_Int)(value < 0 ? value - 0.5 : value + 0.5);
 }
 
+// @source reference https://stackoverflow.com/a/49991852
+// @licence ccbysa3
+wasmu_Float wasmu_sqrt(wasmu_Float value) {
+    wasmu_Float result = 1;
+
+    for (wasmu_Count i = 0; i < 11; i++) {
+        result -= ((result * result) - value) / (2 * result);
+    }
+
+    return result;
+}
+
 // src/interpreter.h
 
 #define WASMU_FF_SKIP_HERE() if (context->fastForward) {break;}
@@ -3437,6 +3449,10 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F32_NEAREST:
         case WASMU_OP_F64_NEAREST:
             WASMU_FLOAT_UNARY_FN(wasmu_nearest)
+
+        case WASMU_OP_F32_SQRT:
+        case WASMU_OP_F64_SQRT:
+            WASMU_FLOAT_UNARY_FN(wasmu_sqrt)
 
         case WASMU_OP_I32_WRAP_I64:
         {

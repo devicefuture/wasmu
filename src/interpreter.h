@@ -992,6 +992,10 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F64_NEAREST:
             WASMU_FLOAT_UNARY_FN(wasmu_nearest)
 
+        case WASMU_OP_F32_SQRT:
+        case WASMU_OP_F64_SQRT:
+            WASMU_FLOAT_UNARY_FN(wasmu_sqrt)
+
         case WASMU_OP_I32_WRAP_I64:
         {
             WASMU_FF_SKIP_HERE();

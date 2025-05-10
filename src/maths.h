@@ -25,3 +25,15 @@ wasmu_Float wasmu_trunc(wasmu_Float value) {
 wasmu_Float wasmu_nearest(wasmu_Float value) {
     return (wasmu_Int)(value < 0 ? value - 0.5 : value + 0.5);
 }
+
+// @source reference https://stackoverflow.com/a/49991852
+// @licence ccbysa3
+wasmu_Float wasmu_sqrt(wasmu_Float value) {
+    wasmu_Float result = 1;
+
+    for (wasmu_Count i = 0; i < 11; i++) {
+        result -= ((result * result) - value) / (2 * result);
+    }
+
+    return result;
+}
