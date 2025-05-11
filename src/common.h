@@ -74,7 +74,7 @@ wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
 
     while (*source) {
         copy[i++] = *source;
-        copy = WASMU_REALLOC(copy, i + 1);
+        copy = (wasmu_U8*)WASMU_REALLOC(copy, i + 1);
 
         if (!copy) {
             return WASMU_NULL;
