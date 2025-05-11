@@ -46,6 +46,14 @@
 
 #endif
 
+#ifndef WASMU_FN_PREFIX
+    #ifdef __cplusplus
+        #define WASMU_FN_PREFIX inline
+    #else
+        #define WASMU_FN_PREFIX
+    #endif
+#endif
+
 #ifndef WASMU_MEMORY_BLOCK_SIZE
 #define WASMU_MEMORY_BLOCK_SIZE 1024
 #endif
@@ -116,7 +124,7 @@ typedef WASMU_F64 wasmu_Float;
 
 #define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : WASMU_NULL)
 
-wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     wasmu_Count i = 0;
 
     while (WASMU_TRUE) {
@@ -136,7 +144,7 @@ wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     }
 }
 
-wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
+WASMU_FN_PREFIX wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
     if (!source) {
         return WASMU_NULL;
     }
@@ -167,7 +175,7 @@ wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
     return copy;
 }
 
-wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
+WASMU_FN_PREFIX wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
     wasmu_Count totalBits = size * 8;
     wasmu_Count bitsChecked = 0;
     wasmu_Count bitsAfter = 0;
@@ -191,7 +199,7 @@ wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
     return bitsChecked - bitsAfter;
 }
 
-wasmu_Count wasmu_countTrailingZeros(wasmu_UInt value, wasmu_Count size) {
+WASMU_FN_PREFIX wasmu_Count wasmu_countTrailingZeros(wasmu_UInt value, wasmu_Count size) {
     wasmu_Count bits = 0;
 
     while (value & 0xFF == 0) {
@@ -211,7 +219,7 @@ wasmu_Count wasmu_countTrailingZeros(wasmu_UInt value, wasmu_Count size) {
     return bits;
 }
 
-wasmu_Count wasmu_countOnes(wasmu_UInt value, wasmu_Count size) {
+WASMU_FN_PREFIX wasmu_Count wasmu_countOnes(wasmu_UInt value, wasmu_Count size) {
     wasmu_Count bits = 0;
 
     while (value) {
@@ -231,7 +239,7 @@ wasmu_Count wasmu_countOnes(wasmu_UInt value, wasmu_Count size) {
 
 // @source reference https://en.wikipedia.org/wiki/Circular_shift
 // @licence ccbysa4
-wasmu_UInt wasmu_rotateLeft(wasmu_UInt value, wasmu_Count size, wasmu_Count shift) {
+WASMU_FN_PREFIX wasmu_UInt wasmu_rotateLeft(wasmu_UInt value, wasmu_Count size, wasmu_Count shift) {
     if ((shift &= (size * 8) - 1) == 0) {
         return value;
     }
@@ -241,7 +249,7 @@ wasmu_UInt wasmu_rotateLeft(wasmu_UInt value, wasmu_Count size, wasmu_Count shif
 
 // @source reference https://en.wikipedia.org/wiki/Circular_shift
 // @licence ccbysa4
-wasmu_UInt wasmu_rotateRight(wasmu_UInt value, wasmu_Count size, wasmu_Count shift) {
+WASMU_FN_PREFIX wasmu_UInt wasmu_rotateRight(wasmu_UInt value, wasmu_Count size, wasmu_Count shift) {
     if ((shift &= (size * 8) - 1) == 0) {
         return value;
     }
@@ -249,17 +257,17 @@ wasmu_UInt wasmu_rotateRight(wasmu_UInt value, wasmu_Count size, wasmu_Count shi
     return (value >> shift) | (value << ((size * 8) - shift));
 }
 
-wasmu_Bool wasmu_isNan(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_isNan(wasmu_Float value) {
     return value != value;
 }
 
 // @source reference https://stackoverflow.com/a/2249173
 // @licence ccbysa2.5
-wasmu_Bool wasmu_isInfinity(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_isInfinity(wasmu_Float value) {
     return !wasmu_isNan(value) && wasmu_isNan(value - value);
 }
 
-void wasmu_signExtend(wasmu_Int* value, wasmu_Count bytes) {
+WASMU_FN_PREFIX void wasmu_signExtend(wasmu_Int* value, wasmu_Count bytes) {
     if (bytes == sizeof(wasmu_Int)) {
         return;
     }
@@ -720,7 +728,7 @@ wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function);
 
 // src/subjects.h
 
-wasmu_ValueType wasmu_getOpcodeSubjectType(wasmu_Opcode opcode) {
+WASMU_FN_PREFIX wasmu_ValueType wasmu_getOpcodeSubjectType(wasmu_Opcode opcode) {
     switch (opcode) {
         case WASMU_OP_I32_LOAD:
         case WASMU_OP_I32_LOAD8_S:
@@ -885,7 +893,7 @@ wasmu_ValueType wasmu_getOpcodeSubjectType(wasmu_Opcode opcode) {
     }
 }
 
-wasmu_ValueType wasmu_getOpcodeObjectType(wasmu_Opcode opcode) {
+WASMU_FN_PREFIX wasmu_ValueType wasmu_getOpcodeObjectType(wasmu_Opcode opcode) {
     switch (opcode) {
         case WASMU_OP_I64_EXTEND_I32_S:
         case WASMU_OP_I64_EXTEND_I32_U:
@@ -926,7 +934,7 @@ wasmu_ValueType wasmu_getOpcodeObjectType(wasmu_Opcode opcode) {
     }
 }
 
-wasmu_Bool wasmu_opcodeIsSigned(wasmu_Opcode opcode) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_opcodeIsSigned(wasmu_Opcode opcode) {
     switch (opcode) {
         case WASMU_OP_I32_LOAD8_S:
         case WASMU_OP_I32_LOAD16_S:
@@ -965,7 +973,7 @@ wasmu_Bool wasmu_opcodeIsSigned(wasmu_Opcode opcode) {
 
 // src/contexts.h
 
-wasmu_Context* wasmu_newContext() {
+WASMU_FN_PREFIX wasmu_Context* wasmu_newContext() {
     WASMU_DEBUG_LOG("Create new context");
 
     wasmu_Context* context = WASMU_NEW(wasmu_Context);
@@ -1000,7 +1008,7 @@ wasmu_Context* wasmu_newContext() {
     return context;
 }
 
-void wasmu_destroyContext(wasmu_Context* context) {
+WASMU_FN_PREFIX void wasmu_destroyContext(wasmu_Context* context) {
     for (wasmu_Count i = 0; i < context->modulesCount; i++) {
         wasmu_destroyModule(context->modules[i]);
     }
@@ -1014,13 +1022,13 @@ void wasmu_destroyContext(wasmu_Context* context) {
     WASMU_FREE(context);
 }
 
-wasmu_Bool wasmu_isRunning(wasmu_Context* context) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_isRunning(wasmu_Context* context) {
     return context->callStack.count > 0;
 }
 
 // src/modules.h
 
-wasmu_Module* wasmu_newModule(wasmu_Context* context) {
+WASMU_FN_PREFIX wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     wasmu_Module* module = WASMU_NEW(wasmu_Module);
 
     module->context = context;
@@ -1044,7 +1052,7 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     return module;
 }
 
-void wasmu_destroyModule(wasmu_Module* module) {
+WASMU_FN_PREFIX void wasmu_destroyModule(wasmu_Module* module) {
     for (wasmu_Count i = 0; i < module->customSectionsCount; i++) {
         wasmu_CustomSection customSection = module->customSections[i];
 
@@ -1106,7 +1114,7 @@ void wasmu_destroyModule(wasmu_Module* module) {
     WASMU_FREE(module);
 }
 
-void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize) {
+WASMU_FN_PREFIX void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize) {
     WASMU_DEBUG_LOG("Load code - size: %d", codeSize);
 
     module->code = code;
@@ -1114,11 +1122,11 @@ void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize) {
     module->position = 0;
 }
 
-void wasmu_assignModuleName(wasmu_Module* module, const wasmu_U8* name) {
+WASMU_FN_PREFIX void wasmu_assignModuleName(wasmu_Module* module, const wasmu_U8* name) {
     module->name = wasmu_copyChars(name);
 }
 
-wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position) {
+WASMU_FN_PREFIX wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position) {
     if (!module->code || position >= module->codeSize) {
         module->context->errorState = WASMU_ERROR_STATE_MEMORY_OOB;
 
@@ -1128,14 +1136,14 @@ wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position) {
     return module->code[position];
 }
 
-wasmu_U8 wasmu_readNext(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_U8 wasmu_readNext(wasmu_Module* module) {
     return wasmu_read(module, module->position++);
 }
 
 // Unsigned integers are encoded as LEB128
 // @source reference https://en.wikipedia.org/wiki/LEB128
 // @licence ccbysa4
-wasmu_UInt wasmu_readUInt(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_UInt wasmu_readUInt(wasmu_Module* module) {
     wasmu_UInt result = 0;
     wasmu_UInt shift = 0;
     wasmu_U8 byte;
@@ -1152,7 +1160,7 @@ wasmu_UInt wasmu_readUInt(wasmu_Module* module) {
 // Signed integers are encoded as LEB128
 // @source reference https://en.wikipedia.org/wiki/LEB128
 // @licence ccbysa4
-wasmu_Int wasmu_readInt(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Int wasmu_readInt(wasmu_Module* module) {
     wasmu_Int result = 0;
     wasmu_UInt shift = 0;
     wasmu_U8 byte;
@@ -1170,7 +1178,7 @@ wasmu_Int wasmu_readInt(wasmu_Module* module) {
     return result;
 }
 
-wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type) {
+WASMU_FN_PREFIX wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type) {
     wasmu_Count size = wasmu_getValueTypeSize(type);
     wasmu_UInt rawValue = 0;
 
@@ -1188,7 +1196,7 @@ wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type) {
     }
 }
 
-wasmu_String wasmu_readString(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_String wasmu_readString(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(size);
 
@@ -1202,7 +1210,7 @@ wasmu_String wasmu_readString(wasmu_Module* module) {
     };
 }
 
-wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
+WASMU_FN_PREFIX wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     wasmu_U8* chars = (wasmu_U8*)WASMU_MALLOC(string.size + 1);
 
     for (wasmu_Count i = 0; i < string.size; i++) {
@@ -1214,7 +1222,7 @@ wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string) {
     return chars;
 }
 
-wasmu_String wasmu_charsToString(const wasmu_U8* chars) {
+WASMU_FN_PREFIX wasmu_String wasmu_charsToString(const wasmu_U8* chars) {
     wasmu_U8* copy = wasmu_copyChars(chars);
     wasmu_Count size = 0;
 
@@ -1228,7 +1236,7 @@ wasmu_String wasmu_charsToString(const wasmu_U8* chars) {
     };
 }
 
-wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
 
@@ -1237,7 +1245,7 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     return result;
 }
 
-wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
+WASMU_FN_PREFIX wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
     switch (type) {
         case WASMU_VALUE_TYPE_I32:
         case WASMU_VALUE_TYPE_F32:
@@ -1253,7 +1261,7 @@ wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
     }
 }
 
-wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name) {
+WASMU_FN_PREFIX wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name) {
     for (wasmu_Count i = 0; i < module->exportsCount; i++) {
         wasmu_Export moduleExport = module->exports[i];
 
@@ -1265,7 +1273,7 @@ wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* n
     return -1;
 }
 
-wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name) {
+WASMU_FN_PREFIX wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name) {
     wasmu_Count functionIndex = wasmu_getExportedFunctionIndex(module, name);
 
     if (functionIndex == -1) {
@@ -1275,7 +1283,7 @@ wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* 
     return WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 }
 
-wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* resolvedModule) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* resolvedModule) {
     wasmu_U8* name = wasmu_getNullTerminatedChars(import->name);
     wasmu_Bool isSuccess = WASMU_FALSE;
 
@@ -1309,7 +1317,7 @@ wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* res
     return isSuccess;
 }
 
-wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
     wasmu_Context* context = module->context;
 
     for (wasmu_Count i = 0; i < module->importsCount; i++) {
@@ -1345,7 +1353,7 @@ wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
     }
 }
 
-wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction) {
     wasmu_Function function;
 
     function.importIndex = -1;
@@ -1368,7 +1376,7 @@ wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, w
 
 // src/parser.h
 
-wasmu_Bool wasmu_parseCustomSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseCustomSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count positionBeforeName = module->position;
 
@@ -1396,7 +1404,7 @@ wasmu_Bool wasmu_parseCustomSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count typesCount = wasmu_readUInt(module);
 
@@ -1451,7 +1459,7 @@ wasmu_Bool wasmu_parseTypesSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count importsCount = wasmu_readUInt(module);
 
@@ -1506,7 +1514,7 @@ wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count functionsCount = wasmu_readUInt(module);
 
@@ -1532,7 +1540,7 @@ wasmu_Bool wasmu_parseFunctionSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count tablesCount = wasmu_readUInt(module);
 
@@ -1557,7 +1565,7 @@ wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
     }
 }
 
-wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count memoriesCount = wasmu_readUInt(module);
 
@@ -1580,7 +1588,7 @@ wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseGlobalSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseGlobalSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count globalsCount = wasmu_readUInt(module);
 
@@ -1612,7 +1620,7 @@ wasmu_Bool wasmu_parseGlobalSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count exportsCount = wasmu_readUInt(module);
 
@@ -1640,7 +1648,7 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseElementSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseElementSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count elementSegmentsCount = wasmu_readUInt(module);
 
@@ -1696,7 +1704,7 @@ wasmu_Bool wasmu_parseElementSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count bodiesCount = wasmu_readUInt(module);
 
@@ -1747,7 +1755,7 @@ wasmu_Bool wasmu_parseCodeSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseDataSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseDataSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count dataSegmentsCount = wasmu_readUInt(module);
 
@@ -1777,14 +1785,14 @@ wasmu_Bool wasmu_parseDataSection(wasmu_Module* module) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseDataCountSection(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseDataCountSection(wasmu_Module* module) {
     wasmu_Count size = wasmu_readUInt(module);
     wasmu_Count dataCount = wasmu_readUInt(module);
 
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
     WASMU_DEBUG_LOG("Parse sections");
 
     static wasmu_U8 magic[] = {0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00};
@@ -1881,7 +1889,7 @@ wasmu_Bool wasmu_parseSections(wasmu_Module* module) {
 
 #define WASMU_MEMORY_ALIGN_BLOCK(value) (((value) + WASMU_MEMORY_BLOCK_SIZE - 1) & ~(WASMU_MEMORY_BLOCK_SIZE - 1))
 
-wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt* value) {
     *value = 0;
 
     for (wasmu_Count i = 0; i < byteCount; i++) {
@@ -1895,7 +1903,7 @@ wasmu_Bool wasmu_memoryLoad(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 by
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 byteCount, wasmu_UInt value) {
     for (wasmu_Count i = 0; i < byteCount; i++) {
         if (index >= memory->size) {
             wasmu_Count newPagesCount = index / WASMU_MEMORY_PAGE_SIZE;
@@ -1926,7 +1934,7 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
     }
 }
 
-wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {
+WASMU_FN_PREFIX wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {
     switch (opcode) {
         case WASMU_OP_I32_LOAD8_S:
         case WASMU_OP_I32_LOAD8_U:
@@ -1954,7 +1962,7 @@ wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {
     }
 }
 
-void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value) {
+WASMU_FN_PREFIX void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value) {
     switch (opcode) {
         case WASMU_OP_I32_LOAD8_S:
         case WASMU_OP_I64_LOAD8_S:
@@ -1990,7 +1998,7 @@ void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value) {
     } \
 } while (0)
 
-wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Count resultsCount, wasmu_Count resultsSize) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Count resultsCount, wasmu_Count resultsSize) {
     wasmu_LabelStack* stack = &context->labelStack;
 
     if (context->callStack.count == 0) {
@@ -2017,7 +2025,7 @@ wasmu_Bool wasmu_pushLabel(wasmu_Context* context, wasmu_Opcode opcode, wasmu_Co
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_popLabel(wasmu_Context* context, wasmu_Count targetCallIndex, wasmu_Label* returnedLabel) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_popLabel(wasmu_Context* context, wasmu_Count targetCallIndex, wasmu_Label* returnedLabel) {
     wasmu_LabelStack* stack = &context->labelStack;
 
     if (stack->count == 0) {
@@ -2043,7 +2051,7 @@ wasmu_Bool wasmu_popLabel(wasmu_Context* context, wasmu_Count targetCallIndex, w
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_getLabel(wasmu_Context* context, wasmu_Count labelIndex, wasmu_Count targetCallIndex, wasmu_Label* returnedLabel) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_getLabel(wasmu_Context* context, wasmu_Count labelIndex, wasmu_Count targetCallIndex, wasmu_Label* returnedLabel) {
     // Function does not throw error as callers may use it to check if a label exists
 
     wasmu_LabelStack* stack = &context->labelStack;
@@ -2071,7 +2079,7 @@ wasmu_Bool wasmu_getLabel(wasmu_Context* context, wasmu_Count labelIndex, wasmu_
     return WASMU_TRUE;
 }
 
-void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
+WASMU_FN_PREFIX void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     /*
         This is done to cache pointers to the active module, function and
         function signature, instead of having to check the top of the call stack
@@ -2147,7 +2155,7 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
     context->currentValueStackBase = call.valueStackBase;
 }
 
-void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
+WASMU_FN_PREFIX void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
     wasmu_CallStack* stack = &context->callStack;
 
     stack->count++;
@@ -2162,7 +2170,7 @@ void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
     wasmu_populateActiveCallInfo(context, call);
 }
 
-wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
     wasmu_CallStack* stack = &context->callStack;
 
     if (stack->count == 0) {
@@ -2191,7 +2199,7 @@ wasmu_Bool wasmu_popCall(wasmu_Context* context, wasmu_Call* returnedCall) {
     return WASMU_TRUE;
 }
 
-void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type) {
+WASMU_FN_PREFIX void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type) {
     wasmu_TypeStack* stack = &context->typeStack;
 
     stack->count++;
@@ -2204,7 +2212,7 @@ void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type) {
     stack->types[stack->count - 1] = type;
 }
 
-wasmu_ValueType wasmu_popType(wasmu_Context* context) {
+WASMU_FN_PREFIX wasmu_ValueType wasmu_popType(wasmu_Context* context) {
     wasmu_TypeStack* stack = &context->typeStack;
 
     if (stack->count == 0) {
@@ -2220,14 +2228,14 @@ wasmu_ValueType wasmu_popType(wasmu_Context* context) {
     return type;
 }
 
-void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
+WASMU_FN_PREFIX void wasmu_growValueStack(wasmu_ValueStack* stack, wasmu_Count newPosition) {
     if (newPosition > stack->size) {
         stack->size = newPosition;
         stack->data = (wasmu_U8*)WASMU_REALLOC(stack->data, stack->size);
     }
 }
 
-wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes) {
+WASMU_FN_PREFIX wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes) {
     wasmu_Int value = 0;
     wasmu_ValueStack* stack = &context->valueStack;
 
@@ -2240,7 +2248,7 @@ wasmu_Int wasmu_stackGetInt(wasmu_Context* context, wasmu_Count position, wasmu_
     return value;
 }
 
-void wasmu_stackSetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes, wasmu_Int value) {
+WASMU_FN_PREFIX void wasmu_stackSetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count bytes, wasmu_Int value) {
     wasmu_ValueStack* stack = &context->valueStack;
 
     wasmu_growValueStack(stack, position + bytes);
@@ -2251,7 +2259,7 @@ void wasmu_stackSetInt(wasmu_Context* context, wasmu_Count position, wasmu_Count
     }
 }
 
-void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value) {
+WASMU_FN_PREFIX void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value) {
     wasmu_ValueStack* stack = &context->valueStack;
 
     wasmu_stackSetInt(context, stack->position, bytes, value);
@@ -2259,7 +2267,7 @@ void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value) {
     stack->position += bytes;
 }
 
-wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
+WASMU_FN_PREFIX wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     wasmu_ValueStack* stack = &context->valueStack;
 
     if (stack->position < bytes) {
@@ -2273,7 +2281,7 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     return wasmu_stackGetInt(context, stack->position, bytes);
 }
 
-void* wasmu_popPtr(wasmu_Context* context) {
+WASMU_FN_PREFIX void* wasmu_popPtr(wasmu_Context* context) {
     wasmu_Memory* memory = WASMU_GET_ENTRY(context->activeModule->memories, context->activeModule->memoriesCount, 0);
     wasmu_UInt index = wasmu_popInt(context, 4);
 
@@ -2284,7 +2292,7 @@ void* wasmu_popPtr(wasmu_Context* context) {
     return memory->data + index;
 }
 
-void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float value) {
+WASMU_FN_PREFIX void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float value) {
     if (wasmu_isNan(value) || wasmu_isInfinity(value)) {
         value = 0;
     }
@@ -2305,7 +2313,7 @@ void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float v
     }
 }
 
-wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {
+WASMU_FN_PREFIX wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {
     wasmu_FloatConverter converter;
 
     switch (type) {
@@ -2322,7 +2330,7 @@ wasmu_Float wasmu_popFloat(wasmu_Context* context, wasmu_ValueType type) {
 
 // src/functions.h
 
-wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex) {
     wasmu_Module** modulePtr = WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
     wasmu_Module* module = *modulePtr;
     wasmu_Module* callingModule = module;
@@ -2445,7 +2453,7 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     wasmu_Context* context = module->context;
     wasmu_Count moduleIndex = -1;
     wasmu_Count functionIndex = -1;
@@ -2479,7 +2487,7 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
     return wasmu_callFunctionByIndex(context, moduleIndex, functionIndex);
 }
 
-void wasmu_returnFromFunction(wasmu_Context* context) {
+WASMU_FN_PREFIX void wasmu_returnFromFunction(wasmu_Context* context) {
     wasmu_ValueStack* stack = &context->valueStack;
 
     wasmu_Count resultsOffset = 0;
@@ -2539,37 +2547,37 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
 
 // src/maths.h
 
-wasmu_Float wasmu_abs(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_abs(wasmu_Float value) {
     return value < 0 ? value * -1 : value;
 }
 
-wasmu_Float wasmu_neg(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_neg(wasmu_Float value) {
     return value * -1;
 }
 
-wasmu_Float wasmu_ceil(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_ceil(wasmu_Float value) {
     wasmu_Int intValue = value;
 
     return value - intValue == 0 ? value : intValue + 1;
 }
 
-wasmu_Float wasmu_floor(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_floor(wasmu_Float value) {
     wasmu_Int intValue = value;
 
     return value == intValue || value >= 0 ? intValue : intValue - 1;
 }
 
-wasmu_Float wasmu_trunc(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_trunc(wasmu_Float value) {
     return (wasmu_Int)value;
 }
 
-wasmu_Float wasmu_nearest(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_nearest(wasmu_Float value) {
     return (wasmu_Int)(value < 0 ? value - 0.5 : value + 0.5);
 }
 
 // @source reference https://stackoverflow.com/a/49991852
 // @licence ccbysa3
-wasmu_Float wasmu_sqrt(wasmu_Float value) {
+WASMU_FN_PREFIX wasmu_Float wasmu_sqrt(wasmu_Float value) {
     wasmu_Float result = 1;
 
     for (wasmu_Count i = 0; i < 11; i++) {
@@ -2579,15 +2587,15 @@ wasmu_Float wasmu_sqrt(wasmu_Float value) {
     return result;
 }
 
-wasmu_Float wasmu_min(wasmu_Float a, wasmu_Float b) {
+WASMU_FN_PREFIX wasmu_Float wasmu_min(wasmu_Float a, wasmu_Float b) {
     return a > b ? b : a;
 }
 
-wasmu_Float wasmu_max(wasmu_Float a, wasmu_Float b) {
+WASMU_FN_PREFIX wasmu_Float wasmu_max(wasmu_Float a, wasmu_Float b) {
     return a < b ? b : a;
 }
 
-wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
+WASMU_FN_PREFIX wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
     return (a < 0 && b < 0) || (a >= 0 && b >= 0) ? a : -a;
 }
 
@@ -2677,7 +2685,7 @@ wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
         break; \
     }
 
-wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, wasmu_Count* positionResult, wasmu_Bool errorOnSearchFail) {
     WASMU_DEBUG_LOG("Begin fast forward - targetOpcode: 0x%02x", targetOpcode);
 
     context->fastForward = WASMU_TRUE;
@@ -2706,7 +2714,7 @@ wasmu_Bool wasmu_fastForward(wasmu_Context* context, wasmu_Opcode targetOpcode, 
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_fastForwardStepInLabel(wasmu_Context* context) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_fastForwardStepInLabel(wasmu_Context* context) {
     if (context->fastForward) {
         context->fastForwardLabelDepth++;
     }
@@ -2714,7 +2722,7 @@ wasmu_Bool wasmu_fastForwardStepInLabel(wasmu_Context* context) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_fastForwardStepOutLabel(wasmu_Context* context) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_fastForwardStepOutLabel(wasmu_Context* context) {
     if (context->fastForward) {
         if (context->fastForwardLabelDepth == 0) {
             WASMU_DEBUG_LOG("Label depth counter underflow while fast forwarding");
@@ -2728,7 +2736,7 @@ wasmu_Bool wasmu_fastForwardStepOutLabel(wasmu_Context* context) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_step(wasmu_Context* context) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
     if (!wasmu_isRunning(context)) {
         return WASMU_FALSE;
     }
@@ -3791,7 +3799,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
     return WASMU_TRUE;
 }
 
-wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
+WASMU_FN_PREFIX wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
     WASMU_DEBUG_LOG("Run function");
 
     wasmu_Bool called = wasmu_callFunction(module, function);

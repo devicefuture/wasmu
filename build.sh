@@ -42,6 +42,8 @@ tee -a dist/wasmu.h > /dev/null << EOF
 #endif
 EOF
 
+sed -i "s/\(^[a-zA-Z_][a-zA-Z0-9_]*.*(.*{\)/WASMU_FN_PREFIX \1/g" dist/wasmu.h
+
 for testPath in test/*/; do
     test=$(basename $testPath)
 

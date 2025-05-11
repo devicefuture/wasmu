@@ -41,6 +41,14 @@
 
 #endif
 
+#ifndef WASMU_FN_PREFIX
+    #ifdef __cplusplus
+        #define WASMU_FN_PREFIX inline
+    #else
+        #define WASMU_FN_PREFIX
+    #endif
+#endif
+
 #ifndef WASMU_MEMORY_BLOCK_SIZE
 #define WASMU_MEMORY_BLOCK_SIZE 1024
 #endif
