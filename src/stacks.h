@@ -291,6 +291,17 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     return wasmu_stackGetInt(context, stack->position, bytes);
 }
 
+void* wasmu_popPtr(wasmu_Context* context) {
+    wasmu_Memory* memory = WASMU_GET_ENTRY(context->activeModule->memories, context->activeModule->memoriesCount, 0);
+    wasmu_UInt index = wasmu_popInt(context, 4);
+
+    if (index >= memory->size) {
+        return WASMU_NULL;
+    }
+
+    return memory->data + index;
+}
+
 void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float value) {
     if (wasmu_isNan(value) || wasmu_isInfinity(value)) {
         value = 0;
