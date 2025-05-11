@@ -168,7 +168,6 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
 void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
     wasmu_CallStack* stack = &context->callStack;
 
-    // TODO: Allow call stack to have a maximum size defined to catch infinite recursion
     stack->count++;
 
     if (stack->count > stack->size) {

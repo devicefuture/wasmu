@@ -50,6 +50,23 @@
 #define WASMU_MEMORY_BLOCK_SIZE 1024
 #endif
 
+#ifndef WASMU_MEMORY_SIZE_CHECKER
+/*
+    You can define this as a function with the following signature:
+
+    WASMU_BOOL sizeChecker(WASMU_COUNT newSize);
+
+    This function will be called every time a module's memory needs to be
+    increased. Return `WASMU_TRUE` to authorise the increase in memory, or
+    `WASMU_FALSE` to reject it and throw an error
+    (`WASMU_ERROR_STATE_MEMORY_OOB`).
+*/
+#endif
+
+#ifndef WASMU_CALL_STACK_DEPTH
+#define WASMU_CALL_STACK_DEPTH 64
+#endif
+
 #ifndef WASMU_IMPORT_RESOLUTION_DEPTH
 #define WASMU_IMPORT_RESOLUTION_DEPTH 16
 #endif
@@ -1879,16 +1896,23 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
     for (wasmu_Count i = 0; i < byteCount; i++) {
         if (index >= memory->size) {
             wasmu_Count newPagesCount = index / WASMU_MEMORY_PAGE_SIZE;
+            wasmu_Count newSize = WASMU_MEMORY_ALIGN_BLOCK(index);
 
             if (newPagesCount > memory->maxPages) {
                 return WASMU_FALSE;
             }
 
+            #ifdef WASMU_MEMORY_SIZE_CHECKER
+                if (!(WASMU_MEMORY_SIZE_CHECKER(newSize))) {
+                    return WASMU_FALSE;
+                }
+            #endif
+
             if (newPagesCount > memory->pagesCount) {
                 memory->pagesCount = newPagesCount;
             }
 
-            memory->size = WASMU_MEMORY_ALIGN_BLOCK(index);
+            memory->size = newSize;
             memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size);
 
             WASMU_DEBUG_LOG("Increase memory size to %d", memory->size);
@@ -2123,7 +2147,6 @@ void wasmu_populateActiveCallInfo(wasmu_Context* context, wasmu_Call call) {
 void wasmu_pushCall(wasmu_Context* context, wasmu_Call call) {
     wasmu_CallStack* stack = &context->callStack;
 
-    // TODO: Allow call stack to have a maximum size defined to catch infinite recursion
     stack->count++;
 
     if (stack->count > stack->size) {
@@ -2383,6 +2406,12 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
     if (context->typeStack.count < signature->parametersCount) {
         WASMU_DEBUG_LOG("Not enough items on value stack to call function (current: %d, needed: %d)", context->typeStack.count, signature->parametersCount);
         context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+        return WASMU_FALSE;
+    }
+
+    if (context->callStack.count >= WASMU_CALL_STACK_DEPTH) {
+        WASMU_DEBUG_LOG("Call stack depth exceeded");
+        context->errorState = WASMU_ERROR_STATE_DEPTH_EXCEEDED;
         return WASMU_FALSE;
     }
 

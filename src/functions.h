@@ -99,6 +99,12 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
         return WASMU_FALSE;
     }
 
+    if (context->callStack.count >= WASMU_CALL_STACK_DEPTH) {
+        WASMU_DEBUG_LOG("Call stack depth exceeded");
+        context->errorState = WASMU_ERROR_STATE_DEPTH_EXCEEDED;
+        return WASMU_FALSE;
+    }
+
     wasmu_pushCall(context, (wasmu_Call) {
         .moduleIndex = moduleIndex,
         .functionIndex = functionIndex,
