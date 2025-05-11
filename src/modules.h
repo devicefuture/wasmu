@@ -159,10 +159,10 @@ wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueType type) {
     switch (type) {
         case WASMU_VALUE_TYPE_F32:
         default:
-            return ((wasmu_FloatConverter) {.asI32 = rawValue}).asF32;
+            return ((wasmu_FloatConverter) {.asI32 = WASMU_STATIC_CAST(wasmu_I32, rawValue)}).asF32;
 
         case WASMU_VALUE_TYPE_F64:
-            return ((wasmu_FloatConverter) {.asI64 = rawValue}).asF64;
+            return ((wasmu_FloatConverter) {.asI64 = WASMU_STATIC_CAST(wasmu_I64, rawValue)}).asF64;
     }
 }
 

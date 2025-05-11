@@ -188,7 +188,7 @@ TEST {
     ASSERT(context->valueStack.position == 8, "Value stack is not at correct position");
     ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
 
-    ASSERT(wasmu_popInt(context, 8) == 1123418112, "Result is not 1123418112");
+    ASSERT(wasmu_popInt(context, 8) == 4638355772470722560, "Result is not 4638355772470722560");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I64, "Result type is not I64");
 
     printf("Get function: \"reinterpretToF64\"\n");

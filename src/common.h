@@ -37,6 +37,12 @@ typedef WASMU_F64 wasmu_Float;
 
 #define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : WASMU_NULL)
 
+#ifdef __cplusplus
+    #define WASMU_STATIC_CAST(type, value) static_cast<type>(value)
+#else
+    #define WASMU_STATIC_CAST(type, value) (value)
+#endif
+
 wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     wasmu_Count i = 0;
 
@@ -115,12 +121,12 @@ wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Count size) {
 wasmu_Count wasmu_countTrailingZeros(wasmu_UInt value, wasmu_Count size) {
     wasmu_Count bits = 0;
 
-    while (value & 0xFF == 0) {
+    while ((value & 0xFF) == 0) {
         value >>= 8;
         bits += 8;
     }
 
-    while (value & 1 == 0) {
+    while ((value & 1) == 0) {
         value >>= 1;
         bits++;
     }

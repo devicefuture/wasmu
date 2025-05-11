@@ -88,7 +88,7 @@ void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* value) {
     }
 
     wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
-    wasmu_UInt sign = *value >> (dataSize * 8) - 1;
+    wasmu_UInt sign = *value >> ((dataSize * 8) - 1);
 
     if (!sign) {
         return;

@@ -1165,7 +1165,12 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 floatValue = 0;
             }
 
-            wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF32 = floatValue}).asI32);
+            if (targetType == WASMU_VALUE_TYPE_I64) {
+                wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF64 = WASMU_STATIC_CAST(wasmu_F64, floatValue)}).asI64);
+            } else {
+                wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF32 = WASMU_STATIC_CAST(wasmu_F32, floatValue)}).asI32);
+            }
+
             wasmu_pushType(context, targetType);
 
             break;
@@ -1181,7 +1186,12 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             wasmu_Int intValue = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
             wasmu_ValueType targetType = size == 8 ? WASMU_VALUE_TYPE_F64 : WASMU_VALUE_TYPE_F32;
 
-            wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI32 = intValue}).asF32);
+            if (targetType == WASMU_VALUE_TYPE_F64) {
+                wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI64 = WASMU_STATIC_CAST(wasmu_I64, intValue)}).asF64);
+            } else {
+                wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI32 = WASMU_STATIC_CAST(wasmu_I32, intValue)}).asF32);
+            }
+
             wasmu_pushType(context, targetType);
 
             break;

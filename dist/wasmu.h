@@ -124,6 +124,12 @@ typedef WASMU_F64 wasmu_Float;
 
 #define WASMU_GET_ENTRY(entriesPtr, countPtr, index) (index < countPtr ? &((entriesPtr)[index]) : WASMU_NULL)
 
+#ifdef __cplusplus
+    #define WASMU_STATIC_CAST(type, value) static_cast<type>(value)
+#else
+    #define WASMU_STATIC_CAST(type, value) (value)
+#endif
+
 WASMU_FN_PREFIX wasmu_Bool wasmu_charsEqual(const wasmu_U8* a, const wasmu_U8* b) {
     wasmu_Count i = 0;
 
@@ -202,12 +208,12 @@ WASMU_FN_PREFIX wasmu_Count wasmu_countLeadingZeros(wasmu_UInt value, wasmu_Coun
 WASMU_FN_PREFIX wasmu_Count wasmu_countTrailingZeros(wasmu_UInt value, wasmu_Count size) {
     wasmu_Count bits = 0;
 
-    while (value & 0xFF == 0) {
+    while ((value & 0xFF) == 0) {
         value >>= 8;
         bits += 8;
     }
 
-    while (value & 1 == 0) {
+    while ((value & 1) == 0) {
         value >>= 1;
         bits++;
     }
@@ -1190,10 +1196,10 @@ WASMU_FN_PREFIX wasmu_Float wasmu_readFloat(wasmu_Module* module, wasmu_ValueTyp
     switch (type) {
         case WASMU_VALUE_TYPE_F32:
         default:
-            return ((wasmu_FloatConverter) {.asI32 = rawValue}).asF32;
+            return ((wasmu_FloatConverter) {.asI32 = WASMU_STATIC_CAST(wasmu_I32, rawValue)}).asF32;
 
         case WASMU_VALUE_TYPE_F64:
-            return ((wasmu_FloatConverter) {.asI64 = rawValue}).asF64;
+            return ((wasmu_FloatConverter) {.asI64 = WASMU_STATIC_CAST(wasmu_I64, rawValue)}).asF64;
     }
 }
 
@@ -1986,7 +1992,7 @@ WASMU_FN_PREFIX void wasmu_signExtendValue(wasmu_Opcode opcode, wasmu_UInt* valu
     }
 
     wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
-    wasmu_UInt sign = *value >> (dataSize * 8) - 1;
+    wasmu_UInt sign = *value >> ((dataSize * 8) - 1);
 
     if (!sign) {
         return;
@@ -3779,7 +3785,12 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
                 floatValue = 0;
             }
 
-            wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF32 = floatValue}).asI32);
+            if (targetType == WASMU_VALUE_TYPE_I64) {
+                wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF64 = WASMU_STATIC_CAST(wasmu_F64, floatValue)}).asI64);
+            } else {
+                wasmu_pushInt(context, size, ((wasmu_FloatConverter) {.asF32 = WASMU_STATIC_CAST(wasmu_F32, floatValue)}).asI32);
+            }
+
             wasmu_pushType(context, targetType);
 
             break;
@@ -3795,7 +3806,12 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
             wasmu_Int intValue = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
             wasmu_ValueType targetType = size == 8 ? WASMU_VALUE_TYPE_F64 : WASMU_VALUE_TYPE_F32;
 
-            wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI32 = intValue}).asF32);
+            if (targetType == WASMU_VALUE_TYPE_F64) {
+                wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI64 = WASMU_STATIC_CAST(wasmu_I64, intValue)}).asF64);
+            } else {
+                wasmu_pushFloat(context, targetType, ((wasmu_FloatConverter) {.asI32 = WASMU_STATIC_CAST(wasmu_I32, intValue)}).asF32);
+            }
+
             wasmu_pushType(context, targetType);
 
             break;

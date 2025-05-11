@@ -53,7 +53,7 @@
         i64.reinterpret_f64
     )
     (func (export "reinterpretToF64") (result f64)
-        i64.const 1123418112
+        i64.const 4638355772470722560
         f64.reinterpret_i64
     )
 )
