@@ -50,5 +50,9 @@ TEST {
     ASSERT(wasmu_popInt(context, 4) == 30, "Result is not 30");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
 
+    PART("Destroy context");
+
+    wasmu_destroyContext(context);
+
     PASS();
 }

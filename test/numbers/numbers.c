@@ -207,5 +207,9 @@ TEST {
     ASSERT(wasmu_popFloat(context, WASMU_VALUE_TYPE_F64) == 123, "Result is not 123");
     ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_F64, "Result type is not F64");
 
+    PART("Destroy context");
+
+    wasmu_destroyContext(context);
+
     PASS();
 }

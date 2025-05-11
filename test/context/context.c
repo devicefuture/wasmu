@@ -7,5 +7,9 @@ TEST {
 
     ASSERT(context, "Context is null");
 
+    PART("Destroy context");
+
+    wasmu_destroyContext(context);
+
     PASS();
 }

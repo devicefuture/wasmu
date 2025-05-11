@@ -223,9 +223,11 @@ typedef union wasmu_FloatConverter {
 } wasmu_FloatConverter;
 
 wasmu_Context* wasmu_newContext();
+void wasmu_destroyContext(wasmu_Context* context);
 wasmu_Bool wasmu_isRunning(wasmu_Context* context);
 
 wasmu_Module* wasmu_newModule(wasmu_Context* context);
+void wasmu_destroyModule(wasmu_Module* module);
 void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize);
 wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
 wasmu_U8 wasmu_readNext(wasmu_Module* module);

@@ -659,9 +659,11 @@ typedef union wasmu_FloatConverter {
 } wasmu_FloatConverter;
 
 wasmu_Context* wasmu_newContext();
+void wasmu_destroyContext(wasmu_Context* context);
 wasmu_Bool wasmu_isRunning(wasmu_Context* context);
 
 wasmu_Module* wasmu_newModule(wasmu_Context* context);
+void wasmu_destroyModule(wasmu_Module* module);
 void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize);
 wasmu_U8 wasmu_read(wasmu_Module* module, wasmu_Count position);
 wasmu_U8 wasmu_readNext(wasmu_Module* module);
@@ -978,6 +980,20 @@ wasmu_Context* wasmu_newContext() {
     return context;
 }
 
+void wasmu_destroyContext(wasmu_Context* context) {
+    for (wasmu_Count i = 0; i < context->modulesCount; i++) {
+        wasmu_destroyModule(context->modules[i]);
+    }
+
+    WASMU_FREE(context->callStack.calls);
+    WASMU_FREE(context->labelStack.labels);
+    WASMU_FREE(context->typeStack.types);
+    WASMU_FREE(context->valueStack.data);
+    WASMU_FREE(context->currentStackLocals);
+    WASMU_FREE(context->modules);
+    WASMU_FREE(context);
+}
+
 wasmu_Bool wasmu_isRunning(wasmu_Context* context) {
     return context->callStack.count > 0;
 }
@@ -1006,6 +1022,68 @@ wasmu_Module* wasmu_newModule(wasmu_Context* context) {
     WASMU_ADD_ENTRY(context->modules, context->modulesCount, module);
 
     return module;
+}
+
+void wasmu_destroyModule(wasmu_Module* module) {
+    for (wasmu_Count i = 0; i < module->customSectionsCount; i++) {
+        wasmu_CustomSection customSection = module->customSections[i];
+
+        WASMU_FREE(customSection.name.chars);
+    }
+
+    for (wasmu_Count i = 0; i < module->functionSignaturesCount; i++) {
+        wasmu_FunctionSignature functionSignature = module->functionSignatures[i];
+
+        WASMU_FREE(functionSignature.parameters);
+        WASMU_FREE(functionSignature.results);
+    }
+
+    for (wasmu_Count i = 0; i < module->importsCount; i++) {
+        wasmu_Import moduleImport = module->imports[i];
+
+        WASMU_FREE(moduleImport.moduleName.chars);
+        WASMU_FREE(moduleImport.name.chars);
+    }
+
+    for (wasmu_Count i = 0; i < module->functionsCount; i++) {
+        wasmu_Function function = module->functions[i];
+
+        if (function.locals) {
+            WASMU_FREE(function.locals);
+        }
+    }
+
+    for (wasmu_Count i = 0; i < module->tablesCount; i++) {
+        wasmu_Table table = module->tables[i];
+
+        WASMU_FREE(table.entries);
+    }
+
+    for (wasmu_Count i = 0; i < module->memoriesCount; i++) {
+        wasmu_Memory memory = module->memories[i];
+
+        WASMU_FREE(memory.data);
+    }
+
+    for (wasmu_Count i = 0; i < module->exportsCount; i++) {
+        wasmu_Export moduleExport = module->exports[i];
+
+        WASMU_FREE(moduleExport.name.chars);
+    }
+
+    if (module->name) {
+        WASMU_FREE(module->name);
+    }
+
+    WASMU_FREE(module->customSections);
+    WASMU_FREE(module->functionSignatures);
+    WASMU_FREE(module->imports);
+    WASMU_FREE(module->functions);
+    WASMU_FREE(module->tables);
+    WASMU_FREE(module->memories);
+    WASMU_FREE(module->globals);
+    WASMU_FREE(module->exports);
+    WASMU_FREE(module);
 }
 
 void wasmu_load(wasmu_Module* module, wasmu_U8* code, wasmu_Count codeSize) {
@@ -1253,6 +1331,8 @@ wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, w
     function.importIndex = -1;
     function.nativeFunction = nativeFunction;
 
+    WASMU_INIT_ENTRIES(function.locals, function.localsCount);
+
     WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
     wasmu_Export moduleExport;
@@ -1373,6 +1453,8 @@ wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
                 function.signatureIndex = wasmu_readUInt(module);
                 function.importIndex = module->importsCount;
                 function.nativeFunction = WASMU_NULL;
+
+                WASMU_INIT_ENTRIES(function.locals, function.localsCount);
 
                 WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 

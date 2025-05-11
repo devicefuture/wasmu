@@ -33,6 +33,20 @@ wasmu_Context* wasmu_newContext() {
     return context;
 }
 
+void wasmu_destroyContext(wasmu_Context* context) {
+    for (wasmu_Count i = 0; i < context->modulesCount; i++) {
+        wasmu_destroyModule(context->modules[i]);
+    }
+
+    WASMU_FREE(context->callStack.calls);
+    WASMU_FREE(context->labelStack.labels);
+    WASMU_FREE(context->typeStack.types);
+    WASMU_FREE(context->valueStack.data);
+    WASMU_FREE(context->currentStackLocals);
+    WASMU_FREE(context->modules);
+    WASMU_FREE(context);
+}
+
 wasmu_Bool wasmu_isRunning(wasmu_Context* context) {
     return context->callStack.count > 0;
 }

@@ -44,5 +44,9 @@ TEST {
 
     ASSERT(wasmu_runFunction(module, start), "Error encountered while running function");
 
+    PART("Destroy context");
+
+    wasmu_destroyContext(context);
+
     PASS();
 }

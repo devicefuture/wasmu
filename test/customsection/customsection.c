@@ -17,5 +17,9 @@ TEST {
     ASSERT(wasmu_stringEqualsChars(module->customSections[0].name, "TestA"), "First custom section name is incorrect");
     ASSERT(wasmu_stringEqualsChars(module->customSections[1].name, "TestB"), "Second custom section name is incorrect");
 
+    PART("Destroy context");
+
+    wasmu_destroyContext(context);
+
     PASS();
 }

@@ -104,6 +104,8 @@ wasmu_Bool wasmu_parseImportSection(wasmu_Module* module) {
                 function.importIndex = module->importsCount;
                 function.nativeFunction = WASMU_NULL;
 
+                WASMU_INIT_ENTRIES(function.locals, function.localsCount);
+
                 WASMU_ADD_ENTRY(module->functions, module->functionsCount, function);
 
                 #ifdef WASMU_DEBUG
