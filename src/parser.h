@@ -254,14 +254,14 @@ wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
         moduleExport.name = wasmu_readString(module);
         moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        printf("Export type: 0x%02x\n", moduleExport.type);
+        WASMU_DEBUG_LOG("Export type: 0x%02x\n", moduleExport.type);
 
         moduleExport.index = wasmu_readUInt(module);
 
         #ifdef WASMU_DEBUG
             wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
 
-            WASMU_DEBUG_LOG("Add export - name: \"%s\", index: %d", nameChars, moduleExport.index);
+            WASMU_DEBUG_LOG("Add export - name: \"%s\", type: 0x%02x, index: %d", nameChars, moduleExport.type, moduleExport.index);
 
             WASMU_FREE(nameChars);
         #endif
