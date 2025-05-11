@@ -1,6 +1,6 @@
 (module
-    (global $a (mut i32) (i32.const 10))
-    (global $b (mut i32) (i32.const 20))
+    (global $a (export "a") (mut i32) (i32.const 10))
+    (global $b (export "b") (mut i32) (i32.const 20))
     (func (export "getGlobals") (result i32 i32)
         global.get $a
         global.get $b

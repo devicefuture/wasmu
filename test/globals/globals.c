@@ -12,6 +12,20 @@ TEST {
     wasmu_load(module, code, size);
     wasmu_parseSections(module);
 
+    PART("Get exported globals");
+
+    wasmu_TypedValue* globalA = wasmu_getExportedGlobal(module, "a");
+
+    ASSERT(globalA, "Global not found");
+    ASSERT(globalA->type == WASMU_VALUE_TYPE_I32, "Global type is not I32");
+    ASSERT(globalA->value.asInt == 10, "Global value is not 10");
+
+    wasmu_TypedValue* globalB = wasmu_getExportedGlobal(module, "b");
+
+    ASSERT(globalB, "Global not found");
+    ASSERT(globalB->type == WASMU_VALUE_TYPE_I32, "Global type is not I32");
+    ASSERT(globalB->value.asInt == 20, "Global value is not 20");
+
     PART("Run function calls");
 
     printf("Get function: \"getGlobals\"\n");

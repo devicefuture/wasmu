@@ -240,8 +240,9 @@ wasmu_String wasmu_readString(wasmu_Module* module);
 wasmu_U8* wasmu_getNullTerminatedChars(wasmu_String string);
 wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b);
 wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type);
-wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name);
+wasmu_Int wasmu_getExportIndex(wasmu_Module* module, const wasmu_U8* name, wasmu_ExportType type);
 wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name);
+wasmu_TypedValue* wasmu_getExportedGlobal(wasmu_Module* module, const wasmu_U8* name);
 wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module);
 wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction);
 

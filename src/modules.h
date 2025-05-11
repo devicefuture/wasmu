@@ -231,11 +231,11 @@ wasmu_Count wasmu_getValueTypeSize(wasmu_ValueType type) {
     }
 }
 
-wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* name) {
+wasmu_Int wasmu_getExportIndex(wasmu_Module* module, const wasmu_U8* name, wasmu_ExportType type) {
     for (wasmu_Count i = 0; i < module->exportsCount; i++) {
         wasmu_Export moduleExport = module->exports[i];
 
-        if (moduleExport.type == WASMU_EXPORT_TYPE_FUNCTION && wasmu_stringEqualsChars(moduleExport.name, name)) {
+        if (moduleExport.type == type && wasmu_stringEqualsChars(moduleExport.name, name)) {
             return moduleExport.index;
         }
     }
@@ -244,7 +244,7 @@ wasmu_Int wasmu_getExportedFunctionIndex(wasmu_Module* module, const wasmu_U8* n
 }
 
 wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* name) {
-    wasmu_Count functionIndex = wasmu_getExportedFunctionIndex(module, name);
+    wasmu_Count functionIndex = wasmu_getExportIndex(module, name, WASMU_EXPORT_TYPE_FUNCTION);
 
     if (functionIndex == -1) {
         return WASMU_NULL;
@@ -253,13 +253,23 @@ wasmu_Function* wasmu_getExportedFunction(wasmu_Module* module, const wasmu_U8* 
     return WASMU_GET_ENTRY(module->functions, module->functionsCount, functionIndex);
 }
 
+wasmu_TypedValue* wasmu_getExportedGlobal(wasmu_Module* module, const wasmu_U8* name) {
+    wasmu_Count globalIndex = wasmu_getExportIndex(module, name, WASMU_EXPORT_TYPE_GLOBAL);
+
+    if (globalIndex == -1) {
+        return WASMU_NULL;
+    }
+
+    return WASMU_GET_ENTRY(module->globals, module->globalsCount, globalIndex);
+}
+
 wasmu_Bool wasmu_resolveModuleImportData(wasmu_Import* import, wasmu_Module* resolvedModule) {
     wasmu_U8* name = wasmu_getNullTerminatedChars(import->name);
     wasmu_Bool isSuccess = WASMU_FALSE;
 
     switch (import->type) {
         case WASMU_EXPORT_TYPE_FUNCTION: {
-            wasmu_Count functionIndex = wasmu_getExportedFunctionIndex(resolvedModule, name);
+            wasmu_Count functionIndex = wasmu_getExportIndex(resolvedModule, name, WASMU_EXPORT_TYPE_FUNCTION);
 
             if (functionIndex == -1) {
                 WASMU_DEBUG_LOG("Unable to resolve imported function - name: %s", name);
