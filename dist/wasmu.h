@@ -707,6 +707,7 @@ void wasmu_pushType(wasmu_Context* context, wasmu_ValueType type);
 wasmu_ValueType wasmu_popType(wasmu_Context* context);
 void wasmu_pushInt(wasmu_Context* context, wasmu_Count bytes, wasmu_Int value);
 wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes);
+void* wasmu_popPtr(wasmu_Context* context);
 
 wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleIndex, wasmu_Count functionIndex);
 wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function);
@@ -2268,6 +2269,17 @@ wasmu_Int wasmu_popInt(wasmu_Context* context, wasmu_Count bytes) {
     stack->position -= bytes;
 
     return wasmu_stackGetInt(context, stack->position, bytes);
+}
+
+void* wasmu_popPtr(wasmu_Context* context) {
+    wasmu_Memory* memory = WASMU_GET_ENTRY(context->activeModule->memories, context->activeModule->memoriesCount, 0);
+    wasmu_UInt index = wasmu_popInt(context, 4);
+
+    if (index >= memory->size) {
+        return WASMU_NULL;
+    }
+
+    return memory->data + index;
 }
 
 void wasmu_pushFloat(wasmu_Context* context, wasmu_ValueType type, wasmu_Float value) {
