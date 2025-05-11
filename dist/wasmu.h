@@ -587,6 +587,7 @@ typedef struct wasmu_Context {
     wasmu_Bool fastForward;
     wasmu_Opcode fastForwardTargetOpcode;
     wasmu_Count fastForwardLabelDepth;
+    void* userData;
 } wasmu_Context;
 
 typedef struct wasmu_Module {
@@ -612,6 +613,7 @@ typedef struct wasmu_Module {
     struct wasmu_Export* exports;
     wasmu_Count exportsCount;
     wasmu_Count nextFunctionIndexForCode;
+    void* userData;
 } wasmu_Module;
 
 typedef struct wasmu_CustomSection {
