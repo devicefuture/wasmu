@@ -331,6 +331,8 @@ wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
 
         WASMU_FREE(targetModuleName);
     }
+
+    return WASMU_TRUE;
 }
 
 wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction) {

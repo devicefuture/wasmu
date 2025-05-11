@@ -1368,6 +1368,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_resolveModuleImports(wasmu_Module* module) {
 
         WASMU_FREE(targetModuleName);
     }
+
+    return WASMU_TRUE;
 }
 
 WASMU_FN_PREFIX wasmu_Bool wasmu_addNativeFunction(wasmu_Module* module, const wasmu_U8* name, wasmu_NativeFunction nativeFunction) {
@@ -1580,6 +1582,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
 
         WASMU_DEBUG_LOG("Add table");
     }
+
+    return WASMU_TRUE;
 }
 
 WASMU_FN_PREFIX wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
@@ -1949,6 +1953,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count i
         memory->data[index++] = value & 0xFF;
         value >>= 8;
     }
+
+    return WASMU_TRUE;
 }
 
 WASMU_FN_PREFIX wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {

@@ -185,6 +185,8 @@ wasmu_Bool wasmu_parseTableSection(wasmu_Module* module) {
 
         WASMU_DEBUG_LOG("Add table");
     }
+
+    return WASMU_TRUE;
 }
 
 wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {

@@ -45,6 +45,8 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
         memory->data[index++] = value & 0xFF;
         value >>= 8;
     }
+
+    return WASMU_TRUE;
 }
 
 wasmu_Count wasmu_getDataSizeFromOpcode(wasmu_Opcode opcode) {
