@@ -62,7 +62,7 @@ wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
         return WASMU_NULL;
     }
 
-    wasmu_U8* copy = WASMU_MALLOC(1);
+    wasmu_U8* copy = (wasmu_U8*)WASMU_MALLOC(1);
 
     if (!copy) {
         return WASMU_NULL;

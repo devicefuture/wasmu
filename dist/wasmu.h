@@ -141,7 +141,7 @@ wasmu_U8* wasmu_copyChars(const wasmu_U8* source) {
         return WASMU_NULL;
     }
 
-    wasmu_U8* copy = WASMU_MALLOC(1);
+    wasmu_U8* copy = (wasmu_U8*)WASMU_MALLOC(1);
 
     if (!copy) {
         return WASMU_NULL;
@@ -2598,7 +2598,7 @@ wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
 #define WASMU_INT_OPERATOR(baseType, operator) { \
         WASMU_FF_SKIP_HERE(); \
         \
-        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode); \
         wasmu_Count size = wasmu_getValueTypeSize(type); \
         \
         baseType b = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type); \
@@ -2615,7 +2615,7 @@ wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
 #define WASMU_FLOAT_OPERATOR(operator) { \
         WASMU_FF_SKIP_HERE(); \
         \
-        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode); \
         \
         wasmu_Float b = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
         wasmu_Float a = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
@@ -2631,7 +2631,7 @@ wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
 #define WASMU_FLOAT_LOGICAL_OPERATOR(operator) { \
         WASMU_FF_SKIP_HERE(); \
         \
-        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode); \
         \
         wasmu_Float b = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
         wasmu_Float a = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
@@ -2647,7 +2647,7 @@ wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
 #define WASMU_FLOAT_UNARY_FN(function) { \
         WASMU_FF_SKIP_HERE(); \
         \
-        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode); \
         \
         wasmu_Float value = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
         \
@@ -2662,7 +2662,7 @@ wasmu_Float wasmu_copysign(wasmu_Float a, wasmu_Float b) {
 #define WASMU_FLOAT_BINARY_FN(function) { \
         WASMU_FF_SKIP_HERE(); \
         \
-        wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode); \
+        wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode); \
         \
         wasmu_Float b = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
         wasmu_Float a = wasmu_popFloat(context, type); WASMU_ASSERT_POP_TYPE(type); \
@@ -3166,7 +3166,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
             wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
             wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
@@ -3216,7 +3216,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
             wasmu_Count dataSize = wasmu_getDataSizeFromOpcode(opcode);
             wasmu_Memory* memory = WASMU_GET_ENTRY(module->memories, module->memoriesCount, 0);
@@ -3303,7 +3303,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             WASMU_DEBUG_LOG("Const - value: %ld", value);
@@ -3317,7 +3317,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         case WASMU_OP_F32_CONST:
         case WASMU_OP_F64_CONST:
         {
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Float value = wasmu_readFloat(module, type);
 
             WASMU_FF_SKIP_HERE();
@@ -3335,7 +3335,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
@@ -3417,7 +3417,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
@@ -3436,7 +3436,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
@@ -3455,7 +3455,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             wasmu_Int value = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
@@ -3542,7 +3542,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             wasmu_Int shift = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
@@ -3562,7 +3562,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
 
             wasmu_Int shift = wasmu_popInt(context, size); WASMU_ASSERT_POP_TYPE(type);
@@ -3642,7 +3642,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_Count size = wasmu_getValueTypeSize(type);
             wasmu_ValueType objectType = wasmu_getOpcodeObjectType(opcode);
             wasmu_Float floatValue = wasmu_popFloat(context, objectType); WASMU_ASSERT_POP_TYPE(objectType);
@@ -3691,7 +3691,7 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
         {
             WASMU_FF_SKIP_HERE();
 
-            wasmu_ValueType type = wasmu_getOpcodeSubjectType(opcode);
+            wasmu_ValueType type = wasmu_getOpcodeSubjectType((wasmu_Opcode)opcode);
             wasmu_ValueType objectType = wasmu_getOpcodeObjectType(opcode);
             wasmu_Count objectSize = wasmu_getValueTypeSize(objectType);
             wasmu_Float floatValue;
