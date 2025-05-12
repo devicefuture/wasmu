@@ -2993,13 +2993,17 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
             if (label.opcode != WASMU_OP_LOOP) {
                 // Clean the stack to remove non-result values from the type and value stacks
 
-                wasmu_Int nonResultsCount = context->typeStack.count - label.typeStackBase - label.resultsCount;
-                wasmu_Int nonResultsSize = context->valueStack.position - label.valueStackBase - label.resultsSize;
+                wasmu_Int nonResultsCount = (wasmu_Int)context->typeStack.count - (wasmu_Int)label.typeStackBase - (wasmu_Int)label.resultsCount;
+                wasmu_Int nonResultsSize = (wasmu_Int)context->valueStack.position - (wasmu_Int)label.valueStackBase - (wasmu_Int)label.resultsSize;
 
                 WASMU_DEBUG_LOG("Clean up stack - nonResultsCount: %d, nonResultsSize: %d", nonResultsCount, nonResultsSize);
 
-                if (nonResultsCount < 0 || nonResultsSize < 0) {
-                    WASMU_DEBUG_LOG(nonResultsCount < 0 ? "Type stack overflow" : "Value stack underflow");
+                if (nonResultsCount < 0) {
+                    WASMU_DEBUG_LOG("Type stack underflow");
+                    context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+                    return WASMU_FALSE;
+                } else if (nonResultsSize < 0) {
+                    WASMU_DEBUG_LOG("Value stack underflow");
                     context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
                     return WASMU_FALSE;
                 }
