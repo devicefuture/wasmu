@@ -134,6 +134,8 @@ typedef struct wasmu_Context {
     wasmu_Bool fastForward;
     wasmu_Opcode fastForwardTargetOpcode;
     wasmu_Count fastForwardLabelDepth;
+    wasmu_Bool isInRunLoop;
+    wasmu_Bool destroyAfterUse;
     void* userData;
 } wasmu_Context;
 
@@ -227,6 +229,7 @@ typedef union wasmu_FloatConverter {
 wasmu_Context* wasmu_newContext();
 void wasmu_destroyContext(wasmu_Context* context);
 wasmu_Bool wasmu_isRunning(wasmu_Context* context);
+void wasmu_stop(wasmu_Context* context);
 
 wasmu_Module* wasmu_newModule(wasmu_Context* context);
 void wasmu_destroyModule(wasmu_Module* module);

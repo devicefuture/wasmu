@@ -326,34 +326,36 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
                 }
             }
 
-            // Clean the stack to remove non-result values from the type and value stacks
+            if (label.opcode != WASMU_OP_LOOP) {
+                // Clean the stack to remove non-result values from the type and value stacks
 
-            wasmu_Int nonResultsCount = context->typeStack.count - label.typeStackBase - label.resultsCount;
-            wasmu_Int nonResultsSize = context->valueStack.position - label.valueStackBase - label.resultsSize;
+                wasmu_Int nonResultsCount = context->typeStack.count - label.typeStackBase - label.resultsCount;
+                wasmu_Int nonResultsSize = context->valueStack.position - label.valueStackBase - label.resultsSize;
 
-            WASMU_DEBUG_LOG("Clean up stack - nonResultsCount: %d, nonResultsSize: %d", nonResultsCount, nonResultsSize);
+                WASMU_DEBUG_LOG("Clean up stack - nonResultsCount: %d, nonResultsSize: %d", nonResultsCount, nonResultsSize);
 
-            if (nonResultsCount < 0 || nonResultsSize < 0) {
-                WASMU_DEBUG_LOG(nonResultsCount < 0 ? "Type stack overflow" : "Value stack underflow");
-                context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
-                return WASMU_FALSE;
+                if (nonResultsCount < 0 || nonResultsSize < 0) {
+                    WASMU_DEBUG_LOG(nonResultsCount < 0 ? "Type stack overflow" : "Value stack underflow");
+                    context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+                    return WASMU_FALSE;
+                }
+
+                // Clean the type stack first by shifting results up
+
+                for (wasmu_Count i = 0; i < nonResultsCount; i++) {
+                    context->typeStack.types[label.typeStackBase + i] = context->typeStack.types[label.typeStackBase + nonResultsCount + i];
+                }
+
+                context->typeStack.count = label.typeStackBase + label.resultsCount;
+
+                // Do the same for the value stack
+
+                for (wasmu_Count i = 0; i < nonResultsSize; i++) {
+                    context->valueStack.data[label.valueStackBase + i] = context->valueStack.data[label.valueStackBase + nonResultsSize + i];
+                }
+
+                context->valueStack.position = label.valueStackBase + label.resultsSize;
             }
-
-            // Clean the type stack first by shifting results up
-
-            for (wasmu_Count i = 0; i < nonResultsCount; i++) {
-                context->typeStack.types[label.typeStackBase + i] = context->typeStack.types[label.typeStackBase + nonResultsCount + i];
-            }
-
-            context->typeStack.count = label.typeStackBase + label.resultsCount;
-
-            // Do the same for the value stack
-
-            for (wasmu_Count i = 0; i < nonResultsSize; i++) {
-                context->valueStack.data[label.valueStackBase + i] = context->valueStack.data[label.valueStackBase + nonResultsSize + i];
-            }
-
-            context->valueStack.position = label.valueStackBase + label.resultsSize;
 
             // Finally, jump to the position specified in the label
 
@@ -1207,6 +1209,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
 }
 
 wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
+    wasmu_Context* context = module->context;
+
     WASMU_DEBUG_LOG("Run function");
 
     wasmu_Bool called = wasmu_callFunction(module, function);
@@ -1215,15 +1219,27 @@ wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
         return WASMU_FALSE;
     }
 
-    while (wasmu_isRunning(module->context)) {
+    context->isInRunLoop = WASMU_TRUE;
+
+    while (wasmu_isRunning(context)) {
         WASMU_DEBUG_LOG("Step");
 
-        if (!wasmu_step(module->context)) {
+        if (!wasmu_step(context)) {
+            context->isInRunLoop = WASMU_FALSE;
+
             return WASMU_FALSE;
         }
     }
 
+    context->isInRunLoop = WASMU_FALSE;
+
     WASMU_DEBUG_LOG("Function returned");
+
+    if (context->destroyAfterUse) {
+        WASMU_DEBUG_LOG("Destroying context after having been used");
+
+        wasmu_destroyContext(context);
+    }
 
     return WASMU_TRUE;
 }

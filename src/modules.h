@@ -210,7 +210,7 @@ wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U8* b) {
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
 
-    free(chars);
+    WASMU_FREE(chars);
 
     return result;
 }

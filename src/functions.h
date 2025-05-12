@@ -40,6 +40,16 @@ wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, wasmu_Count moduleI
             return WASMU_FALSE;
         }
 
+        #ifdef WASMU_DEBUG
+            wasmu_U8* moduleNameChars = wasmu_getNullTerminatedChars(moduleImport->moduleName);
+            wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleImport->name);
+
+            WASMU_DEBUG_LOG("Resolving import - moduleName: \"%s\", name: \"%s\"", moduleNameChars, nameChars);
+
+            WASMU_FREE(moduleNameChars);
+            WASMU_FREE(nameChars);
+        #endif
+
         moduleIndex = moduleImport->resolvedModuleIndex;
         module = *WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
 

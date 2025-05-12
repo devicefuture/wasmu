@@ -601,6 +601,8 @@ typedef struct wasmu_Context {
     wasmu_Bool fastForward;
     wasmu_Opcode fastForwardTargetOpcode;
     wasmu_Count fastForwardLabelDepth;
+    wasmu_Bool isInRunLoop;
+    wasmu_Bool destroyAfterUse;
     void* userData;
 } wasmu_Context;
 
@@ -694,6 +696,7 @@ typedef union wasmu_FloatConverter {
 wasmu_Context* wasmu_newContext();
 void wasmu_destroyContext(wasmu_Context* context);
 wasmu_Bool wasmu_isRunning(wasmu_Context* context);
+void wasmu_stop(wasmu_Context* context);
 
 wasmu_Module* wasmu_newModule(wasmu_Context* context);
 void wasmu_destroyModule(wasmu_Module* module);
@@ -1009,6 +1012,8 @@ WASMU_FN_PREFIX wasmu_Context* wasmu_newContext() {
     context->fastForward = WASMU_FALSE;
     context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;
     context->fastForwardLabelDepth = 0;
+    context->isInRunLoop = WASMU_FALSE;
+    context->destroyAfterUse = WASMU_FALSE;
 
     WASMU_INIT_ENTRIES(context->modules, context->modulesCount);
 
@@ -1016,6 +1021,14 @@ WASMU_FN_PREFIX wasmu_Context* wasmu_newContext() {
 }
 
 WASMU_FN_PREFIX void wasmu_destroyContext(wasmu_Context* context) {
+    if (context->isInRunLoop) {
+        context->destroyAfterUse = WASMU_TRUE;
+
+        wasmu_stop(context);
+
+        return;
+    }
+
     for (wasmu_Count i = 0; i < context->modulesCount; i++) {
         wasmu_destroyModule(context->modules[i]);
     }
@@ -1031,6 +1044,15 @@ WASMU_FN_PREFIX void wasmu_destroyContext(wasmu_Context* context) {
 
 WASMU_FN_PREFIX wasmu_Bool wasmu_isRunning(wasmu_Context* context) {
     return context->callStack.count > 0;
+}
+
+WASMU_FN_PREFIX void wasmu_stop(wasmu_Context* context) {
+    context->callStack.count = 0;
+    context->labelStack.count = 0;
+    context->typeStack.count = 0;
+    context->valueStack.position = 0;
+
+    context->activeModule = WASMU_NULL;
 }
 
 // src/modules.h
@@ -1247,7 +1269,7 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_stringEqualsChars(wasmu_String a, const wasmu_U
     wasmu_U8* chars = wasmu_getNullTerminatedChars(a);
     wasmu_Bool result = wasmu_charsEqual(chars, b);
 
-    free(chars);
+    WASMU_FREE(chars);
 
     return result;
 }
@@ -1593,7 +1615,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
     for (wasmu_Count i = 0; i < memoriesCount; i++) {
         wasmu_Memory memory;
 
-        memory.data = (wasmu_U8*)WASMU_MALLOC(0);
+        memory.data = (wasmu_U8*)WASMU_MALLOC(1);
+        memory.data[0] = 0;
         memory.size = 0;
 
         wasmu_U8 limitsFlag = WASMU_NEXT();
@@ -1651,14 +1674,14 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_parseExportSection(wasmu_Module* module) {
         moduleExport.name = wasmu_readString(module);
         moduleExport.type = (wasmu_ExportType)WASMU_NEXT();
 
-        printf("Export type: 0x%02x\n", moduleExport.type);
+        WASMU_DEBUG_LOG("Export type: 0x%02x\n", moduleExport.type);
 
         moduleExport.index = wasmu_readUInt(module);
 
         #ifdef WASMU_DEBUG
             wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleExport.name);
 
-            WASMU_DEBUG_LOG("Add export - name: \"%s\", index: %d", nameChars, moduleExport.index);
+            WASMU_DEBUG_LOG("Add export - name: \"%s\", type: 0x%02x, index: %d", nameChars, moduleExport.type, moduleExport.index);
 
             WASMU_FREE(nameChars);
         #endif
@@ -1928,7 +1951,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count i
     for (wasmu_Count i = 0; i < byteCount; i++) {
         if (index >= memory->size) {
             wasmu_Count newPagesCount = index / WASMU_MEMORY_PAGE_SIZE;
-            wasmu_Count newSize = WASMU_MEMORY_ALIGN_BLOCK(index);
+            wasmu_Count oldSize = memory->size;
+            wasmu_Count newSize = WASMU_MEMORY_ALIGN_BLOCK(index + 1);
 
             if (newPagesCount > memory->maxPages) {
                 return WASMU_FALSE;
@@ -1945,7 +1969,11 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count i
             }
 
             memory->size = newSize;
-            memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size);
+            memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size + 1);
+
+            for (wasmu_Count j = oldSize; j < newSize + 1; j++) {
+                memory->data[j] = 0;
+            }
 
             WASMU_DEBUG_LOG("Increase memory size to %d", memory->size);
         }
@@ -2394,6 +2422,16 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_callFunctionByIndex(wasmu_Context* context, was
             context->errorState = WASMU_ERROR_STATE_PRECONDITION_FAILED;
             return WASMU_FALSE;
         }
+
+        #ifdef WASMU_DEBUG
+            wasmu_U8* moduleNameChars = wasmu_getNullTerminatedChars(moduleImport->moduleName);
+            wasmu_U8* nameChars = wasmu_getNullTerminatedChars(moduleImport->name);
+
+            WASMU_DEBUG_LOG("Resolving import - moduleName: \"%s\", name: \"%s\"", moduleNameChars, nameChars);
+
+            WASMU_FREE(moduleNameChars);
+            WASMU_FREE(nameChars);
+        #endif
 
         moduleIndex = moduleImport->resolvedModuleIndex;
         module = *WASMU_GET_ENTRY(context->modules, context->modulesCount, moduleIndex);
@@ -2952,34 +2990,36 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
                 }
             }
 
-            // Clean the stack to remove non-result values from the type and value stacks
+            if (label.opcode != WASMU_OP_LOOP) {
+                // Clean the stack to remove non-result values from the type and value stacks
 
-            wasmu_Int nonResultsCount = context->typeStack.count - label.typeStackBase - label.resultsCount;
-            wasmu_Int nonResultsSize = context->valueStack.position - label.valueStackBase - label.resultsSize;
+                wasmu_Int nonResultsCount = context->typeStack.count - label.typeStackBase - label.resultsCount;
+                wasmu_Int nonResultsSize = context->valueStack.position - label.valueStackBase - label.resultsSize;
 
-            WASMU_DEBUG_LOG("Clean up stack - nonResultsCount: %d, nonResultsSize: %d", nonResultsCount, nonResultsSize);
+                WASMU_DEBUG_LOG("Clean up stack - nonResultsCount: %d, nonResultsSize: %d", nonResultsCount, nonResultsSize);
 
-            if (nonResultsCount < 0 || nonResultsSize < 0) {
-                WASMU_DEBUG_LOG(nonResultsCount < 0 ? "Type stack overflow" : "Value stack underflow");
-                context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
-                return WASMU_FALSE;
+                if (nonResultsCount < 0 || nonResultsSize < 0) {
+                    WASMU_DEBUG_LOG(nonResultsCount < 0 ? "Type stack overflow" : "Value stack underflow");
+                    context->errorState = WASMU_ERROR_STATE_STACK_UNDERFLOW;
+                    return WASMU_FALSE;
+                }
+
+                // Clean the type stack first by shifting results up
+
+                for (wasmu_Count i = 0; i < nonResultsCount; i++) {
+                    context->typeStack.types[label.typeStackBase + i] = context->typeStack.types[label.typeStackBase + nonResultsCount + i];
+                }
+
+                context->typeStack.count = label.typeStackBase + label.resultsCount;
+
+                // Do the same for the value stack
+
+                for (wasmu_Count i = 0; i < nonResultsSize; i++) {
+                    context->valueStack.data[label.valueStackBase + i] = context->valueStack.data[label.valueStackBase + nonResultsSize + i];
+                }
+
+                context->valueStack.position = label.valueStackBase + label.resultsSize;
             }
-
-            // Clean the type stack first by shifting results up
-
-            for (wasmu_Count i = 0; i < nonResultsCount; i++) {
-                context->typeStack.types[label.typeStackBase + i] = context->typeStack.types[label.typeStackBase + nonResultsCount + i];
-            }
-
-            context->typeStack.count = label.typeStackBase + label.resultsCount;
-
-            // Do the same for the value stack
-
-            for (wasmu_Count i = 0; i < nonResultsSize; i++) {
-                context->valueStack.data[label.valueStackBase + i] = context->valueStack.data[label.valueStackBase + nonResultsSize + i];
-            }
-
-            context->valueStack.position = label.valueStackBase + label.resultsSize;
 
             // Finally, jump to the position specified in the label
 
@@ -3833,6 +3873,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
 }
 
 WASMU_FN_PREFIX wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Function* function) {
+    wasmu_Context* context = module->context;
+
     WASMU_DEBUG_LOG("Run function");
 
     wasmu_Bool called = wasmu_callFunction(module, function);
@@ -3841,15 +3883,27 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_runFunction(wasmu_Module* module, wasmu_Functio
         return WASMU_FALSE;
     }
 
-    while (wasmu_isRunning(module->context)) {
+    context->isInRunLoop = WASMU_TRUE;
+
+    while (wasmu_isRunning(context)) {
         WASMU_DEBUG_LOG("Step");
 
-        if (!wasmu_step(module->context)) {
+        if (!wasmu_step(context)) {
+            context->isInRunLoop = WASMU_FALSE;
+
             return WASMU_FALSE;
         }
     }
 
+    context->isInRunLoop = WASMU_FALSE;
+
     WASMU_DEBUG_LOG("Function returned");
+
+    if (context->destroyAfterUse) {
+        WASMU_DEBUG_LOG("Destroying context after having been used");
+
+        wasmu_destroyContext(context);
+    }
 
     return WASMU_TRUE;
 }

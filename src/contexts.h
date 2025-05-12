@@ -27,6 +27,8 @@ wasmu_Context* wasmu_newContext() {
     context->fastForward = WASMU_FALSE;
     context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;
     context->fastForwardLabelDepth = 0;
+    context->isInRunLoop = WASMU_FALSE;
+    context->destroyAfterUse = WASMU_FALSE;
 
     WASMU_INIT_ENTRIES(context->modules, context->modulesCount);
 
@@ -34,6 +36,14 @@ wasmu_Context* wasmu_newContext() {
 }
 
 void wasmu_destroyContext(wasmu_Context* context) {
+    if (context->isInRunLoop) {
+        context->destroyAfterUse = WASMU_TRUE;
+
+        wasmu_stop(context);
+
+        return;
+    }
+
     for (wasmu_Count i = 0; i < context->modulesCount; i++) {
         wasmu_destroyModule(context->modules[i]);
     }
@@ -49,4 +59,13 @@ void wasmu_destroyContext(wasmu_Context* context) {
 
 wasmu_Bool wasmu_isRunning(wasmu_Context* context) {
     return context->callStack.count > 0;
+}
+
+void wasmu_stop(wasmu_Context* context) {
+    context->callStack.count = 0;
+    context->labelStack.count = 0;
+    context->typeStack.count = 0;
+    context->valueStack.position = 0;
+
+    context->activeModule = WASMU_NULL;
 }

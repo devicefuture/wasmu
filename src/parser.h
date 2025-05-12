@@ -196,7 +196,8 @@ wasmu_Bool wasmu_parseMemorySection(wasmu_Module* module) {
     for (wasmu_Count i = 0; i < memoriesCount; i++) {
         wasmu_Memory memory;
 
-        memory.data = (wasmu_U8*)WASMU_MALLOC(0);
+        memory.data = (wasmu_U8*)WASMU_MALLOC(1);
+        memory.data[0] = 0;
         memory.size = 0;
 
         wasmu_U8 limitsFlag = WASMU_NEXT();

@@ -20,7 +20,8 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
     for (wasmu_Count i = 0; i < byteCount; i++) {
         if (index >= memory->size) {
             wasmu_Count newPagesCount = index / WASMU_MEMORY_PAGE_SIZE;
-            wasmu_Count newSize = WASMU_MEMORY_ALIGN_BLOCK(index);
+            wasmu_Count oldSize = memory->size;
+            wasmu_Count newSize = WASMU_MEMORY_ALIGN_BLOCK(index + 1);
 
             if (newPagesCount > memory->maxPages) {
                 return WASMU_FALSE;
@@ -37,7 +38,11 @@ wasmu_Bool wasmu_memoryStore(wasmu_Memory* memory, wasmu_Count index, wasmu_U8 b
             }
 
             memory->size = newSize;
-            memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size);
+            memory->data = (wasmu_U8*)WASMU_REALLOC(memory->data, memory->size + 1);
+
+            for (wasmu_Count j = oldSize; j < newSize + 1; j++) {
+                memory->data[j] = 0;
+            }
 
             WASMU_DEBUG_LOG("Increase memory size to %d", memory->size);
         }
