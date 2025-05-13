@@ -143,4 +143,26 @@
         i32.div_s
         return
     )
+    (func (export "doubleNearBranchInNestedBlocks") (result i32)
+        (block
+            (block
+                nop
+            )
+            br 0
+        )
+        ;; Remainder of function is to verify if absolute block index is correct
+        (block
+            (block
+                (block
+                    br 1
+                )
+                i32.const 0
+                return
+            )
+            i32.const 1
+            return
+        )
+        i32.const 2
+        return
+    )
 )

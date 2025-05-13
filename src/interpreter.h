@@ -161,7 +161,10 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             return WASMU_TRUE;
         }
 
-        WASMU_DEBUG_LOG("Skip over instruction - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
+        WASMU_DEBUG_LOG(
+            "Skip over instruction - opcode: 0x%02x, position: 0x%08x, depth: %d",
+            opcode, module->position, context->fastForwardLabelDepth
+        );
     } else {
         WASMU_DEBUG_LOG("Execute instruction - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
     }
@@ -263,7 +266,15 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             if (wasmu_getLabel(context, 0, context->callStack.count - 1, &label)) {
                 WASMU_DEBUG_LOG("End - leave structured instruction");
 
-                wasmu_popLabel(context, -1, WASMU_NULL);
+                if (module->position < context->positionBeforeFastForward) {
+                    WASMU_DEBUG_LOG("Don't pop label as end is before branch instruction");
+
+                    break;
+                }
+
+                if (!wasmu_popLabel(context, -1, WASMU_NULL)) {
+                    return WASMU_FALSE;
+                }
             } else {
                 WASMU_DEBUG_LOG("End - return from function");
 
@@ -364,6 +375,8 @@ wasmu_Bool wasmu_step(wasmu_Context* context) {
             // Finally, jump to the position specified in the label
 
             WASMU_DEBUG_LOG("Checking label from position 0x%08x", label.position);
+
+            context->positionBeforeFastForward = module->position;
 
             module->position = label.position;
 

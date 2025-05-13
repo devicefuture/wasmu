@@ -207,6 +207,22 @@ TEST {
         ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
     }
 
+    printf("Get function: \"doubleNearBranchInNestedBlocks\"\n");
+
+    wasmu_Function* doubleNearBranchInNestedBlocks = wasmu_getExportedFunction(module, "doubleNearBranchInNestedBlocks");
+
+    ASSERT(doubleNearBranchInNestedBlocks, "Function not found");
+
+    ASSERT(context->valueStack.position == 0, "Value stack is not at correct position");
+
+    ASSERT(wasmu_runFunction(module, doubleNearBranchInNestedBlocks), "Error encountered while running function");
+
+    ASSERT(context->valueStack.position == 4, "Value stack is not at correct position");
+    ASSERT(context->typeStack.count == 1, "Type stack is not at correct count");
+
+    ASSERT(wasmu_popInt(context, 4) == 1, "Result is not 1");
+    ASSERT(wasmu_popType(context) == WASMU_VALUE_TYPE_I32, "Result type is not I32");
+
     PART("Destroy context");
 
     wasmu_destroyContext(context);

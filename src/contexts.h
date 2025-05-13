@@ -27,6 +27,7 @@ wasmu_Context* wasmu_newContext() {
     context->fastForward = WASMU_FALSE;
     context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;
     context->fastForwardLabelDepth = 0;
+    context->positionBeforeFastForward = 0;
     context->isInRunLoop = WASMU_FALSE;
     context->destroyAfterUse = WASMU_FALSE;
 

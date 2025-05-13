@@ -601,6 +601,7 @@ typedef struct wasmu_Context {
     wasmu_Bool fastForward;
     wasmu_Opcode fastForwardTargetOpcode;
     wasmu_Count fastForwardLabelDepth;
+    wasmu_Count positionBeforeFastForward;
     wasmu_Bool isInRunLoop;
     wasmu_Bool destroyAfterUse;
     void* userData;
@@ -1012,6 +1013,7 @@ WASMU_FN_PREFIX wasmu_Context* wasmu_newContext() {
     context->fastForward = WASMU_FALSE;
     context->fastForwardTargetOpcode = WASMU_OP_UNREACHABLE;
     context->fastForwardLabelDepth = 0;
+    context->positionBeforeFastForward = 0;
     context->isInRunLoop = WASMU_FALSE;
     context->destroyAfterUse = WASMU_FALSE;
 
@@ -2551,31 +2553,22 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Functi
 WASMU_FN_PREFIX void wasmu_returnFromFunction(wasmu_Context* context) {
     wasmu_ValueStack* stack = &context->valueStack;
 
-    wasmu_Count resultsOffset = 0;
-    wasmu_Count totalLocalsSize = 0;
+    wasmu_Count totalResultsSize = 0;
 
-    // First, get the total sizes of parameters, results and locals, popping all types
+    // First, get the total size of locals, popping all types
 
     for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
         wasmu_StackLocal local = context->currentStackLocals[i];
 
-        totalLocalsSize += local.size;
-
-        if (local.type == WASMU_LOCAL_TYPE_PARAMETER || local.type == WASMU_LOCAL_TYPE_LOCAL) {
-            resultsOffset += local.size;
+        if (local.type == WASMU_LOCAL_TYPE_RESULT) {
+            totalResultsSize += local.size;
         }
+
+        wasmu_popType(context);
     }
 
     wasmu_Count base = context->currentValueStackBase;
-    wasmu_Count nonLocalsSize = stack->position - base - totalLocalsSize;
-
-    // Ensure that results offset also accounts for stack values related to parameters, results and locals
-
-    if (nonLocalsSize > 0) {
-        WASMU_DEBUG_LOG("Popping non-locals - size: %d", nonLocalsSize);
-
-        resultsOffset += nonLocalsSize;
-    }
+    wasmu_Int resultsOffset = (wasmu_Int)stack->position - (wasmu_Int)base - (wasmu_Int)totalResultsSize;
 
     // Then if there are non-result values, remove them from the stack to clean it, shifting the results up
 
@@ -2825,7 +2818,10 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
             return WASMU_TRUE;
         }
 
-        WASMU_DEBUG_LOG("Skip over instruction - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
+        WASMU_DEBUG_LOG(
+            "Skip over instruction - opcode: 0x%02x, position: 0x%08x, depth: %d",
+            opcode, module->position, context->fastForwardLabelDepth
+        );
     } else {
         WASMU_DEBUG_LOG("Execute instruction - opcode: 0x%02x, position: 0x%08x", opcode, module->position);
     }
@@ -2927,7 +2923,15 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
             if (wasmu_getLabel(context, 0, context->callStack.count - 1, &label)) {
                 WASMU_DEBUG_LOG("End - leave structured instruction");
 
-                wasmu_popLabel(context, -1, WASMU_NULL);
+                if (module->position < context->positionBeforeFastForward) {
+                    WASMU_DEBUG_LOG("Don't pop label as end is before branch instruction");
+
+                    break;
+                }
+
+                if (!wasmu_popLabel(context, -1, WASMU_NULL)) {
+                    return WASMU_FALSE;
+                }
             } else {
                 WASMU_DEBUG_LOG("End - return from function");
 
@@ -3028,6 +3032,8 @@ WASMU_FN_PREFIX wasmu_Bool wasmu_step(wasmu_Context* context) {
             // Finally, jump to the position specified in the label
 
             WASMU_DEBUG_LOG("Checking label from position 0x%08x", label.position);
+
+            context->positionBeforeFastForward = module->position;
 
             module->position = label.position;
 

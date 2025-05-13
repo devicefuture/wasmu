@@ -168,31 +168,22 @@ wasmu_Bool wasmu_callFunction(wasmu_Module* module, wasmu_Function* function) {
 void wasmu_returnFromFunction(wasmu_Context* context) {
     wasmu_ValueStack* stack = &context->valueStack;
 
-    wasmu_Count resultsOffset = 0;
-    wasmu_Count totalLocalsSize = 0;
+    wasmu_Count totalResultsSize = 0;
 
-    // First, get the total sizes of parameters, results and locals, popping all types
+    // First, get the total size of locals, popping all types
 
     for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
         wasmu_StackLocal local = context->currentStackLocals[i];
 
-        totalLocalsSize += local.size;
-
-        if (local.type == WASMU_LOCAL_TYPE_PARAMETER || local.type == WASMU_LOCAL_TYPE_LOCAL) {
-            resultsOffset += local.size;
+        if (local.type == WASMU_LOCAL_TYPE_RESULT) {
+            totalResultsSize += local.size;
         }
+
+        wasmu_popType(context);
     }
 
     wasmu_Count base = context->currentValueStackBase;
-    wasmu_Count nonLocalsSize = stack->position - base - totalLocalsSize;
-
-    // Ensure that results offset also accounts for stack values related to parameters, results and locals
-
-    if (nonLocalsSize > 0) {
-        WASMU_DEBUG_LOG("Popping non-locals - size: %d", nonLocalsSize);
-
-        resultsOffset += nonLocalsSize;
-    }
+    wasmu_Int resultsOffset = (wasmu_Int)stack->position - (wasmu_Int)base - (wasmu_Int)totalResultsSize;
 
     // Then if there are non-result values, remove them from the stack to clean it, shifting the results up
 

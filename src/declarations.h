@@ -134,6 +134,7 @@ typedef struct wasmu_Context {
     wasmu_Bool fastForward;
     wasmu_Opcode fastForwardTargetOpcode;
     wasmu_Count fastForwardLabelDepth;
+    wasmu_Count positionBeforeFastForward;
     wasmu_Bool isInRunLoop;
     wasmu_Bool destroyAfterUse;
     void* userData;
