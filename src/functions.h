@@ -170,7 +170,7 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
 
     wasmu_Count totalResultsSize = 0;
 
-    // First, get the total size of locals, popping all types
+    // First, get the total size of locals
 
     for (wasmu_Count i = 0; i < context->currentStackLocalsCount; i++) {
         wasmu_StackLocal local = context->currentStackLocals[i];
@@ -178,8 +178,6 @@ void wasmu_returnFromFunction(wasmu_Context* context) {
         if (local.type == WASMU_LOCAL_TYPE_RESULT) {
             totalResultsSize += local.size;
         }
-
-        wasmu_popType(context);
     }
 
     wasmu_Count base = context->currentValueStackBase;

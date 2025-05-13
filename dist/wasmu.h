@@ -2563,8 +2563,6 @@ WASMU_FN_PREFIX void wasmu_returnFromFunction(wasmu_Context* context) {
         if (local.type == WASMU_LOCAL_TYPE_RESULT) {
             totalResultsSize += local.size;
         }
-
-        wasmu_popType(context);
     }
 
     wasmu_Count base = context->currentValueStackBase;
